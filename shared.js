@@ -71,6 +71,7 @@ function buildSidebar(active){
     </a>`;
   }).join('');
 
+  initSidebarCollapse();
   const userEl = document.getElementById('sidebar-user');
   if(userEl) userEl.innerHTML = `
     <div class="sb-user-row">
@@ -189,6 +190,42 @@ function badgeHTML(status){
   return `<span class="badge badge-${cls}">${escH(status||'—')}</span>`;
 }
 function navTo(page){ window.location.href = page+'.html'; }
+
+
+// ── SIDEBAR COLLAPSE (desktop) ──
+function initSidebarCollapse(){
+  if(window.innerWidth <= 900) return;
+  // Add toggle button
+  if(document.getElementById('sb-toggle-btn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'sb-toggle-btn';
+  btn.className = 'sidebar-toggle';
+  btn.innerHTML = '<span id="sb-toggle-icon">◀</span>';
+  btn.onclick = toggleDesktopSidebar;
+  btn.title = 'Toggle Sidebar';
+  document.body.appendChild(btn);
+  // Restore state
+  if(localStorage.getItem('sb-collapsed')==='1') _collapseSidebar(true);
+}
+
+function toggleDesktopSidebar(){
+  const collapsed = document.body.classList.contains('sb-collapsed');
+  _collapseSidebar(!collapsed);
+}
+
+function _collapseSidebar(collapse){
+  if(collapse){
+    document.body.classList.add('sb-collapsed');
+    const icon = document.getElementById('sb-toggle-icon');
+    if(icon) icon.textContent = '▶';
+    localStorage.setItem('sb-collapsed','1');
+  } else {
+    document.body.classList.remove('sb-collapsed');
+    const icon = document.getElementById('sb-toggle-icon');
+    if(icon) icon.textContent = '◀';
+    localStorage.setItem('sb-collapsed','0');
+  }
+}
 
 // ── PAGE INIT ──
 async function initPage(pageId, title, onDataLoaded){

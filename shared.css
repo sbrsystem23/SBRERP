@@ -197,3 +197,15 @@ select.fi{cursor:pointer}
   .page-title{font-size:16px}
   .date-pill{display:none}
 }
+
+/* ── SIDEBAR COLLAPSE (desktop) ── */
+.sidebar-toggle{position:fixed;top:50%;left:var(--sidebar-w);transform:translate(-50%,-50%);width:20px;height:44px;background:var(--blue);border-radius:0 8px 8px 0;cursor:pointer;z-index:201;display:flex;align-items:center;justify-content:center;border:none;transition:left .25s}
+.sidebar-toggle span{color:#fff;font-size:9px;pointer-events:none}
+body.sb-collapsed .sidebar{transform:translateX(-230px)}
+body.sb-collapsed .sidebar-toggle{left:0;transform:translate(0,-50%)}
+body.sb-collapsed .topbar{left:0}
+body.sb-collapsed .main{margin-left:0}
+body.sb-collapsed .view-full{margin-left:0}
+/* Fix for full-page views (builder) */
+.view-full{margin-left:var(--sidebar-w);margin-top:var(--topbar-h);transition:margin .25s}
+@media(max-width:900px){.sidebar-toggle{display:none}.view-full{margin-left:0}}

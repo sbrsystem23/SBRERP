@@ -5,7 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SBR System ERP — Clients</title>
 <link rel="stylesheet" href="shared.css">
-<style></style>
+<style>
+/* Persons / Phones repeater */
+.contact-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;position:relative}
+.contact-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.contact-card-title{font-size:12px;font-weight:700;color:var(--blue)}
+.phone-row{display:grid;grid-template-columns:110px 1fr 90px 36px;gap:8px;align-items:center;margin-bottom:8px}
+.wa-toggle{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);cursor:pointer;white-space:nowrap}
+.wa-toggle input{accent-color:#25d366;width:14px;height:14px}
+.add-row-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border:1px dashed var(--border);border-radius:7px;font-size:11px;color:var(--blue);cursor:pointer;background:#fff;transition:all .12s;margin-top:4px}
+.add-row-btn:hover{border-color:var(--blue);background:var(--blue-lt)}
+.del-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:2px;transition:color .12s}
+.del-btn:hover{color:var(--red)}
+/* Client list card view */
+.cl-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;transition:box-shadow .15s;cursor:pointer}
+.cl-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08);border-color:var(--blue-dim)}
+.cl-av{width:40px;height:40px;border-radius:10px;background:var(--blue);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;margin:2px 2px 0 0;white-space:nowrap}
+.pill-phone{background:#f0f4ff;color:var(--blue)}
+.pill-wa{background:#e6fff3;color:#16a34a}
+</style>
 </head>
 <body>
 <div class="sb-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
@@ -18,102 +38,336 @@
   <div class="sb-user" id="sidebar-user"></div>
 </aside>
 <div class="topbar">
-  <div class="topbar-left">
-    <div class="menu-btn" onclick="toggleSidebar()">☰</div>
-    <div class="topbar-title" id="topbar-title">Clients</div>
-  </div>
+  <div class="topbar-left"><div class="menu-btn" onclick="toggleSidebar()">☰</div><div class="topbar-title" id="topbar-title">Clients</div></div>
   <div class="topbar-right">
     <div class="sync-pill"><div class="sync-dot" id="sync-dot"></div><span id="sync-txt">Syncing...</span></div>
     <div class="date-pill" id="topbar-date"></div>
     <span style="font-size:10px;color:var(--text3)" id="topbar-ver"></span>
   </div>
 </div>
+
 <div class="main">
+  <!-- Header -->
+  <div class="page-hdr">
+    <div><div class="page-title">👥 Clients</div><div class="page-sub" id="cl-count"></div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-o btn-sm" id="view-btn" onclick="toggleView()">⊞ Grid</button>
+      <button class="btn btn-p" onclick="openModal()">+ Add Client</button>
+    </div>
+  </div>
 
-<div class="page-hdr">
-  <div><div class="page-title">👥 Clients</div><div class="page-sub" id="cl-count"></div></div>
-  <button class="btn btn-p" onclick="openModal()">+ Add Client</button>
-</div>
-<div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-  <div class="search-wrap flex-1" style="max-width:300px"><input class="fi" id="search" placeholder="Search clients..." oninput="render()"></div>
-  <select class="fi" id="type-filter" onchange="render()" style="max-width:180px">
-    <option value="">All Types</option>
-    <option>Residential</option><option>Commercial</option><option>Interior Fit Out</option><option>Designer</option>
-  </select>
-</div>
-<div class="tbl-wrap">
-  <table class="tbl">
-    <thead><tr><th>#</th><th>Client Name</th><th>Type</th><th>Phone</th><th>Email</th><th>TRN</th><th>Contact Person</th><th>Actions</th></tr></thead>
-    <tbody id="cl-tbody"></tbody>
-  </table>
+  <!-- Filters -->
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <div class="search-wrap flex-1" style="max-width:300px">
+      <input class="fi" id="search" placeholder="Search by name, phone, email..." oninput="render()">
+    </div>
+    <select class="fi" id="type-f" onchange="render()" style="max-width:180px">
+      <option value="">All Types</option>
+      <option>Residential</option><option>Commercial</option>
+      <option>Interior Fit Out</option><option>Designer</option>
+    </select>
+  </div>
+
+  <!-- List (table) -->
+  <div id="view-table" class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Client</th><th>Type</th><th>Phones</th><th>Email</th><th>TRN</th><th>Contact Persons</th><th>Actions</th></tr></thead>
+      <tbody id="cl-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Grid (cards) -->
+  <div id="view-grid" style="display:none" class="cl-grid" id="cl-grid-wrap"></div>
 </div>
 
-<!-- Modal -->
+<!-- ═══ CLIENT MODAL ═══ -->
 <div class="modal-bg" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
-    <div class="modal-hdr"><div class="modal-title" id="modal-title">Add Client</div><button class="modal-close" onclick="closeModal()">✕</button></div>
-    <div class="form-grid mb-12">
-      <div class="field"><label class="flbl">Client Name *</label><input class="fi" id="f-name" placeholder="Full name or company"></div>
-      <div class="field"><label class="flbl">Type</label><select class="fi" id="f-type"><option>Residential</option><option>Commercial</option><option>Interior Fit Out</option><option>Designer</option></select></div>
+  <div class="modal" style="max-width:680px">
+    <div class="modal-hdr">
+      <div class="modal-title" id="modal-title">Add Client</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
-    <div class="field mb-12"><label class="flbl">Address</label><input class="fi" id="f-addr" placeholder="Villa / Area, Dubai UAE"></div>
+
+    <!-- Basic Info -->
+    <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">📋 Basic Information</div>
     <div class="form-grid mb-12">
-      <div class="field"><label class="flbl">Phone</label><input class="fi" id="f-phone" placeholder="+971 50 XXX XXXX"></div>
-      <div class="field"><label class="flbl">Email</label><input class="fi" id="f-email" type="email" placeholder="client@email.com"></div>
+      <div class="field"><label class="flbl">Client Name *</label><input class="fi" id="f-name" placeholder="Company or full name"></div>
+      <div class="field"><label class="flbl">Type</label>
+        <select class="fi" id="f-type">
+          <option>Residential</option><option>Commercial</option><option>Interior Fit Out</option><option>Designer</option>
+        </select>
+      </div>
     </div>
+    <div class="field mb-12"><label class="flbl">Address</label><input class="fi" id="f-addr" placeholder="Area, City, Country"></div>
     <div class="form-grid mb-12">
-      <div class="field"><label class="flbl">TRN</label><input class="fi" id="f-trn" placeholder="Tax Registration No."></div>
-      <div class="field"><label class="flbl">Contact Person</label><input class="fi" id="f-contact" placeholder="Contact name"></div>
+      <div class="field"><label class="flbl">Email</label><input class="fi" id="f-email" type="email" placeholder="company@email.com"></div>
+      <div class="field"><label class="flbl">Website</label><input class="fi" id="f-web" placeholder="www.example.com"></div>
     </div>
-    <div class="field mb-12"><label class="flbl">Notes</label><textarea class="fi" id="f-notes" rows="2" placeholder="Any notes..."></textarea></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
+    <div class="field mb-16"><label class="flbl">TRN (Tax Registration No.)</label><input class="fi" id="f-trn" placeholder="e.g. 104077229620000"></div>
+
+    <!-- Company Phones -->
+    <div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">📞 Company Phone Numbers</div>
+    <div id="phones-wrap"></div>
+    <div class="add-row-btn" onclick="addPhone()">＋ Add Phone Number</div>
+
+    <!-- Contact Persons -->
+    <div style="font-size:11px;font-weight:700;color:var(--blue);margin:16px 0 10px;text-transform:uppercase;letter-spacing:.5px">👤 Contact Persons</div>
+    <div id="persons-wrap"></div>
+    <div class="add-row-btn" onclick="addPerson()">＋ Add Contact Person</div>
+
+    <!-- Notes -->
+    <div class="field" style="margin-top:16px"><label class="flbl">Notes</label><textarea class="fi" id="f-notes" rows="2" placeholder="Any additional notes..."></textarea></div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
       <button class="btn btn-o" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-p" onclick="save()">💾 Save Client</button>
+      <button class="btn btn-p" onclick="saveClient()">💾 Save Client</button>
     </div>
   </div>
 </div>
 
-</div>
 <script src="shared.js"></script>
 <script>
-
 let editId = null;
-function render(){
-  const q = (document.getElementById('search').value||'').toLowerCase();
-  const tf = document.getElementById('type-filter').value;
-  const list = (SBR.clients||[]).filter(c=>
-    (!q || (c.name||'').toLowerCase().includes(q) || (c.phone||'').includes(q) || (c.email||'').toLowerCase().includes(q)) &&
-    (!tf || c.type===tf)
-  );
-  document.getElementById('cl-count').textContent = list.length+' clients';
-  const tbody = document.getElementById('cl-tbody');
-  if(!list.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">No clients found</div></div></td></tr>`;return;}
-  tbody.innerHTML = list.map((c,i)=>`<tr>
-    <td class="td-muted">${i+1}</td>
-    <td><div class="td-primary">${escH(c.name)}</div>${c.addr?`<div class="td-muted">${escH(c.addr)}</div>`:''}</td>
-    <td>${badgeHTML(c.type||'Residential')}</td>
-    <td class="td-muted">${escH(c.phone||'—')}</td>
-    <td class="td-muted">${escH(c.email||'—')}</td>
-    <td class="td-muted">${escH(c.trn||'—')}</td>
-    <td class="td-muted">${escH(c.contact||c.contactPerson||'—')}</td>
-    <td style="white-space:nowrap">
-      <button class="btn btn-o btn-xs" onclick="openEdit(${c.id})">✏️ Edit</button>
-      <button class="btn btn-r btn-xs" onclick="del(${c.id})">✕</button>
-    </td></tr>`).join('');
-}
-function openModal(){ editId=null; document.getElementById('modal-title').textContent='Add Client'; ['name','addr','phone','email','trn','contact','notes'].forEach(k=>sv('f-'+k,'')); document.getElementById('modal').style.display='flex'; }
-function openEdit(id){ const c=(SBR.clients||[]).find(x=>x.id===id); if(!c)return; editId=id; document.getElementById('modal-title').textContent='Edit Client'; sv('f-name',c.name);sv('f-type',c.type||'Residential');sv('f-addr',c.addr||'');sv('f-phone',c.phone||'');sv('f-email',c.email||'');sv('f-trn',c.trn||'');sv('f-contact',c.contact||c.contactPerson||'');sv('f-notes',c.notes||''); document.getElementById('modal').style.display='flex'; }
-function closeModal(){ document.getElementById('modal').style.display='none'; }
-function save(){
-  const name=gv('f-name').trim(); if(!name){showToast('Name required','error');return;}
-  const obj={name,type:gv('f-type'),addr:gv('f-addr'),phone:gv('f-phone'),email:gv('f-email'),trn:gv('f-trn'),contact:gv('f-contact'),notes:gv('f-notes')};
-  if(editId){const idx=(SBR.clients||[]).findIndex(c=>c.id===editId);if(idx>=0)SBR.clients[idx]={...SBR.clients[idx],...obj};}
-  else{if(!SBR.clients)SBR.clients=[];SBR.clients.push({id:Date.now(),...obj});}
-  saveAllData(); closeModal(); render(); showToast('✅ Client saved!');
-}
-function del(id){ if(!confirm('Delete this client?'))return; SBR.clients=(SBR.clients||[]).filter(c=>c.id!==id); saveAllData(); render(); showToast('Deleted'); }
+let _phones = [];
+let _persons = [];
+let _isGrid = false;
 
-window.addEventListener('load',async function(){await initPage('clients','Clients',function(){if(typeof render==='function')render();});});
+// ── RENDER LIST ──
+function render(){
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  const tf=document.getElementById('type-f').value;
+  const list=(SBR.clients||[]).filter(c=>
+    (!q||(c.name||'').toLowerCase().includes(q)||
+         (c.phones||[]).some(p=>(p.number||'').includes(q))||
+         (c.email||'').toLowerCase().includes(q)||
+         (c.persons||[]).some(p=>(p.name||'').toLowerCase().includes(q)))&&
+    (!tf||c.type===tf)
+  ).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+
+  document.getElementById('cl-count').textContent = list.length+' clients';
+
+  if(_isGrid) renderGrid(list); else renderTable(list);
+}
+
+function renderTable(list){
+  const tbody=document.getElementById('cl-tbody');
+  if(!list.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">👥</div><div class="empty-text">No clients found</div></div></td></tr>`;return;}
+  tbody.innerHTML=list.map((c,i)=>{
+    const phones=(c.phones||[]).map(p=>`<span class="pill ${p.wa?'pill-wa':'pill-phone'}">${p.wa?'💬':''}${escH(p.number||'')}</span>`).join('');
+    const persons=(c.persons||[]).map(p=>`<div style="font-size:11px"><strong>${escH(p.name||'')}</strong>${p.desig?` <span style="color:var(--text2)">· ${escH(p.desig)}</span>`:''}</div>`).join('');
+    return `<tr>
+      <td class="td-muted">${i+1}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="cl-av" style="width:32px;height:32px;font-size:11px">${initials(c.name)}</div>
+          <div><div class="td-primary">${escH(c.name||'—')}</div>
+          ${c.addr?`<div class="td-muted">${escH(c.addr)}</div>`:''}
+          </div>
+        </div>
+      </td>
+      <td>${badgeHTML(c.type||'Residential')}</td>
+      <td>${phones||'<span class="td-muted">—</span>'}</td>
+      <td class="td-muted">${escH(c.email||'—')}</td>
+      <td class="td-muted" style="font-size:10px;font-family:monospace">${escH(c.trn||'—')}</td>
+      <td>${persons||'<span class="td-muted">—</span>'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-o btn-xs" onclick="openEdit(${c.id})">✏️ Edit</button>
+        <button class="btn btn-r btn-xs" onclick="delClient(${c.id})">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderGrid(list){
+  const wrap=document.getElementById('view-grid');
+  if(!list.length){wrap.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="empty-icon">👥</div><div class="empty-text">No clients found</div></div>';return;}
+  wrap.innerHTML=list.map(c=>{
+    const phones=(c.phones||[]).map(p=>`<span class="pill ${p.wa?'pill-wa':'pill-phone'}">${p.wa?'💬':''}${escH(p.number||'')}</span>`).join('');
+    const persons=(c.persons||[]).map(p=>`<div style="font-size:11px;margin-bottom:2px"><strong>${escH(p.name||'')}</strong>${p.desig?` <span style="color:var(--text2)">· ${escH(p.desig)}</span>`:''}</div>`).join('');
+    return `<div class="cl-card" onclick="openEdit(${c.id})">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="cl-av">${initials(c.name)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:var(--blue);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(c.name||'—')}</div>
+          <div style="font-size:11px;color:var(--text2)">${escH(c.type||'')}</div>
+        </div>
+      </div>
+      ${c.addr?`<div style="font-size:11px;color:var(--text2);margin-bottom:6px">📍 ${escH(c.addr)}</div>`:''}
+      ${phones?`<div style="margin-bottom:6px">${phones}</div>`:''}
+      ${c.email?`<div style="font-size:11px;color:var(--text2);margin-bottom:6px">✉️ ${escH(c.email)}</div>`:''}
+      ${persons?`<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:6px">${persons}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function toggleView(){
+  _isGrid=!_isGrid;
+  document.getElementById('view-table').style.display=_isGrid?'none':'';
+  document.getElementById('view-grid').style.display=_isGrid?'grid':'none';
+  document.getElementById('view-btn').textContent=_isGrid?'☰ List':'⊞ Grid';
+  render();
+}
+
+function initials(n){
+  return (n||'?').split(' ').map(w=>w[0]||'').join('').substring(0,2).toUpperCase();
+}
+
+// ── MODAL ──
+function openModal(){
+  editId=null;
+  document.getElementById('modal-title').textContent='Add Client';
+  document.getElementById('f-name').value='';
+  document.getElementById('f-type').value='Residential';
+  document.getElementById('f-addr').value='';
+  document.getElementById('f-email').value='';
+  document.getElementById('f-web').value='';
+  document.getElementById('f-trn').value='';
+  document.getElementById('f-notes').value='';
+  _phones=[{type:'Office',number:'',label:'',wa:false}];
+  _persons=[{name:'',desig:'',email:'',phones:[{type:'Mobile',number:'',wa:false}]}];
+  renderPhones(); renderPersons();
+  document.getElementById('modal').style.display='flex';
+  setTimeout(()=>document.getElementById('f-name').focus(),100);
+}
+
+function openEdit(id){
+  const c=(SBR.clients||[]).find(x=>x.id===id);
+  if(!c)return;
+  editId=id;
+  document.getElementById('modal-title').textContent='Edit Client';
+  document.getElementById('f-name').value=c.name||'';
+  document.getElementById('f-type').value=c.type||'Residential';
+  document.getElementById('f-addr').value=c.addr||'';
+  document.getElementById('f-email').value=c.email||'';
+  document.getElementById('f-web').value=c.web||'';
+  document.getElementById('f-trn').value=c.trn||'';
+  document.getElementById('f-notes').value=c.notes||'';
+  _phones=JSON.parse(JSON.stringify(c.phones&&c.phones.length?c.phones:[{type:'Office',number:'',label:'',wa:false}]));
+  _persons=JSON.parse(JSON.stringify(c.persons&&c.persons.length?c.persons:[{name:'',desig:'',email:'',phones:[{type:'Mobile',number:'',wa:false}]}]));
+  renderPhones(); renderPersons();
+  document.getElementById('modal').style.display='flex';
+}
+
+function closeModal(){document.getElementById('modal').style.display='none';}
+
+// ── PHONES REPEATER ──
+function renderPhones(){
+  const wrap=document.getElementById('phones-wrap');
+  wrap.innerHTML=_phones.map((p,i)=>`
+    <div class="phone-row">
+      <select class="fi" style="font-size:11px" onchange="_phones[${i}].type=this.value">
+        ${['Office','Mobile','WhatsApp','Fax','Other'].map(t=>`<option${p.type===t?' selected':''}>${t}</option>`).join('')}
+      </select>
+      <input class="fi" style="font-size:12px" placeholder="+971 XX XXX XXXX" value="${escH(p.number||'')}" oninput="_phones[${i}].number=this.value">
+      <label class="wa-toggle"><input type="checkbox" ${p.wa?'checked':''} onchange="_phones[${i}].wa=this.checked"> 💬 WhatsApp</label>
+      <button class="del-btn" onclick="removePhone(${i})" title="Remove">✕</button>
+    </div>`).join('');
+}
+
+function addPhone(){
+  _phones.push({type:'Mobile',number:'',label:'',wa:false});
+  renderPhones();
+}
+
+function removePhone(i){
+  if(_phones.length<=1){showToast('At least one phone required','error');return;}
+  _phones.splice(i,1); renderPhones();
+}
+
+// ── PERSONS REPEATER ──
+function renderPersons(){
+  const wrap=document.getElementById('persons-wrap');
+  wrap.innerHTML=_persons.map((p,pi)=>`
+    <div class="contact-card">
+      <div class="contact-card-hdr">
+        <span class="contact-card-title">👤 Contact Person ${pi+1}</span>
+        ${_persons.length>1?`<button class="del-btn" onclick="removePerson(${pi})">✕</button>`:''}
+      </div>
+      <div class="form-grid mb-12">
+        <div class="field"><label class="flbl">Full Name *</label><input class="fi" placeholder="Contact person name" value="${escH(p.name||'')}" oninput="_persons[${pi}].name=this.value"></div>
+        <div class="field"><label class="flbl">Designation / Role</label><input class="fi" placeholder="e.g. Project Manager, Owner" value="${escH(p.desig||'')}" oninput="_persons[${pi}].desig=this.value"></div>
+      </div>
+      <div class="field mb-12"><label class="flbl">Email</label><input class="fi" type="email" placeholder="person@email.com" value="${escH(p.email||'')}" oninput="_persons[${pi}].email=this.value"></div>
+      <div style="font-size:10px;font-weight:600;color:var(--text2);margin-bottom:6px">PHONE NUMBERS</div>
+      <div id="person-phones-${pi}">
+        ${(p.phones||[]).map((ph,phi)=>`
+          <div class="phone-row">
+            <select class="fi" style="font-size:11px" onchange="_persons[${pi}].phones[${phi}].type=this.value">
+              ${['Mobile','Office','WhatsApp','Other'].map(t=>`<option${ph.type===t?' selected':''}>${t}</option>`).join('')}
+            </select>
+            <input class="fi" style="font-size:12px" placeholder="+971 XX XXX XXXX" value="${escH(ph.number||'')}" oninput="_persons[${pi}].phones[${phi}].number=this.value">
+            <label class="wa-toggle"><input type="checkbox" ${ph.wa?'checked':''} onchange="_persons[${pi}].phones[${phi}].wa=this.checked"> 💬 WhatsApp</label>
+            <button class="del-btn" onclick="removePersonPhone(${pi},${phi})">✕</button>
+          </div>`).join('')}
+      </div>
+      <div class="add-row-btn" onclick="addPersonPhone(${pi})">＋ Add Phone</div>
+    </div>`).join('');
+}
+
+function addPerson(){
+  _persons.push({name:'',desig:'',email:'',phones:[{type:'Mobile',number:'',wa:false}]});
+  renderPersons();
+}
+
+function removePerson(i){
+  _persons.splice(i,1); renderPersons();
+}
+
+function addPersonPhone(pi){
+  if(!_persons[pi].phones)_persons[pi].phones=[];
+  _persons[pi].phones.push({type:'Mobile',number:'',wa:false});
+  renderPersons();
+}
+
+function removePersonPhone(pi,phi){
+  _persons[pi].phones.splice(phi,1);
+  renderPersons();
+}
+
+// ── SAVE ──
+function saveClient(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){showToast('Client name is required','error');return;}
+  
+  const obj={
+    name,
+    type:document.getElementById('f-type').value,
+    addr:document.getElementById('f-addr').value.trim(),
+    email:document.getElementById('f-email').value.trim(),
+    web:document.getElementById('f-web').value.trim(),
+    trn:document.getElementById('f-trn').value.trim(),
+    notes:document.getElementById('f-notes').value.trim(),
+    phones:_phones.filter(p=>p.number.trim()),
+    persons:_persons.filter(p=>p.name.trim()).map(p=>{
+      return {...p, phones:(p.phones||[]).filter(ph=>ph.number.trim())};
+    })
+  };
+
+  if(!SBR.clients)SBR.clients=[];
+  if(editId){
+    const idx=SBR.clients.findIndex(c=>c.id===editId);
+    if(idx>=0) SBR.clients[idx]={...SBR.clients[idx],...obj};
+  } else {
+    SBR.clients.push({id:Date.now(),...obj});
+  }
+
+  saveAllData();
+  closeModal();
+  render();
+  showToast('✅ Client saved!');
+}
+
+// ── DELETE ──
+function delClient(id){
+  if(!confirm('Delete this client?'))return;
+  SBR.clients=(SBR.clients||[]).filter(c=>c.id!==id);
+  saveAllData(); render(); showToast('Deleted');
+}
+
+function render_main(){render();}
+window.addEventListener('load',async function(){
+  await initPage('clients','Clients',function(){render();});
+});
 </script>
 </body>
 </html>

@@ -448,6 +448,7 @@ function delQt(id){
 function showView(id){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  if(id==='view-builder') setTimeout(positionBuilder, 50);
   // Update topbar title
   const t=document.getElementById('topbar-title');
   if(t) t.textContent=id==='view-list'?'Quotations':'Quotation Builder';
@@ -1002,11 +1003,42 @@ function createProject(){showToast('Redirecting to Projects...');setTimeout(()=>
 function createInvoice(){showToast('Redirecting to Invoices...');setTimeout(()=>navTo('invoices'),1000);}
 function createDelivery(){showToast('Redirecting to Delivery Notes...');setTimeout(()=>navTo('delivery'),1000);}
 
+
+// ── BUILDER POSITIONING ──
+function positionBuilder(){
+  var builder = document.getElementById('view-builder');
+  if(!builder) return;
+  var sidebar = document.getElementById('sidebar');
+  var topbar = document.querySelector('.topbar');
+  var collapsed = document.body.classList.contains('sb-collapsed');
+  var mobile = window.innerWidth <= 900;
+  
+  var sidebarW = (sidebar && !collapsed && !mobile) ? (sidebar.offsetWidth || 230) : 0;
+  var topbarH = topbar ? (topbar.offsetHeight || 56) : 56;
+  
+  builder.style.marginLeft = sidebarW + 'px';
+  builder.style.marginTop = topbarH + 'px';
+  builder.style.minHeight = 'calc(100vh - ' + topbarH + 'px)';
+  builder.style.width = 'calc(100vw - ' + sidebarW + 'px)';
+  builder.style.boxSizing = 'border-box';
+}
+
+// Call on toggle sidebar
+var _origToggleDesktop = window.toggleDesktopSidebar;
+window.toggleDesktopSidebar = function(){
+  if(_origToggleDesktop) _origToggleDesktop();
+  setTimeout(positionBuilder, 300);
+};
+
+// Call on resize
+window.addEventListener('resize', positionBuilder);
+
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
 function render(){renderList();}
 window.addEventListener('load',async function(){
+  positionBuilder();
   await initPage('quotations','Quotations',function(){render();});
 });
 </script>

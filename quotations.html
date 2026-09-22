@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SBR System ERP — Quotations</title>
+<title>SBR System ERP — Quotations v2</title>
 <link rel="stylesheet" href="shared.css">
 <style>
 /* ── VIEWS ── */
@@ -1007,21 +1007,22 @@ function createDelivery(){showToast('Redirecting to Delivery Notes...');setTimeo
 // ── BUILDER POSITIONING ──
 function positionBuilder(){
   var builder = document.getElementById('view-builder');
-  if(!builder) return;
+  if(!builder || !builder.classList.contains('active')) return;
   var sidebar = document.getElementById('sidebar');
   var topbar = document.querySelector('.topbar');
   var collapsed = document.body.classList.contains('sb-collapsed');
   var mobile = window.innerWidth <= 900;
-  
-  var sidebarW = (sidebar && !collapsed && !mobile) ? (sidebar.offsetWidth || 230) : 0;
-  var topbarH = topbar ? (topbar.offsetHeight || 56) : 56;
-  
-  builder.style.marginLeft = sidebarW + 'px';
-  builder.style.marginTop = topbarH + 'px';
-  builder.style.minHeight = 'calc(100vh - ' + topbarH + 'px)';
-  builder.style.width = 'calc(100vw - ' + sidebarW + 'px)';
-  builder.style.boxSizing = 'border-box';
+  var sidebarW = (sidebar && !collapsed && !mobile) ? 230 : 0;
+  var topbarH = topbar ? topbar.offsetHeight : 56;
+  builder.style.cssText = 'padding:0;margin-left:'+sidebarW+'px;margin-top:'+topbarH+'px;width:calc(100vw - '+sidebarW+'px);min-height:calc(100vh - '+topbarH+'px);box-sizing:border-box;transition:all .25s';
 }
+
+// Watch for sidebar state changes with MutationObserver
+var _builderObserver = new MutationObserver(function(){ setTimeout(positionBuilder, 50); });
+window.addEventListener('load', function(){
+  _builderObserver.observe(document.body, {attributes:true, attributeFilter:['class']});
+  window.addEventListener('resize', positionBuilder);
+});
 
 // Call on toggle sidebar
 var _origToggleDesktop = window.toggleDesktopSidebar;

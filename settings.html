@@ -51,20 +51,19 @@
 var lhHeader='', lhFooter='', letterheadImg='', letterheadMode='default';
 
 function loadLetterheadFromStorage(){
-  try{
-    var raw=localStorage.getItem('sbr_letterhead');
-    if(raw){
-      var d=JSON.parse(raw);
-      letterheadImg=d.img||''; letterheadMode=d.mode||'default';
-      lhHeader=d.hdr||''; lhFooter=d.ftr||'';
-    }
-  }catch(e){}
+  // Load from cloud (SBR.letterhead) — already loaded by initPage
+  var lh=SBR.letterhead||{};
+  letterheadImg=lh.img||'';
+  letterheadMode=lh.mode||'default';
+  lhHeader=lh.hdr||'';
+  lhFooter=lh.ftr||'';
 }
 
 function saveLetterheadToStorage(){
-  try{
-    localStorage.setItem('sbr_letterhead',JSON.stringify({img:letterheadImg,mode:letterheadMode,hdr:lhHeader,ftr:lhFooter}));
-  }catch(e){showToast('Letterhead too large for storage','error');}
+  // Save to cloud via Google Sheets
+  SBR.letterhead={img:letterheadImg,mode:letterheadMode,hdr:lhHeader,ftr:lhFooter};
+  saveAllData();
+  showToast('✅ Letterhead saved to cloud — available on all devices!');
 }
 
 function cropLetterheadParts(img){
@@ -76,7 +75,7 @@ function cropLetterheadParts(img){
   }
   lhHeader=cropTo(0,0,w,Math.round(h*0.085));
   lhFooter=cropTo(0,h-Math.round(h*0.12),w,Math.round(h*0.12));
-  saveLetterheadToStorage();
+  saveLetterheadToStorage(); // saves to cloud
 }
 
 function uploadLetterhead(input){
@@ -93,7 +92,6 @@ function uploadLetterhead(input){
       letterheadImg=canvas.toDataURL('image/jpeg',0.9);
       letterheadMode='custom';
       cropLetterheadParts(tempImg);
-      showToast('✅ Letterhead uploaded! Will be used on all documents.');
       renderLetterheadPreview();
     };
     tempImg.src=e.target.result;

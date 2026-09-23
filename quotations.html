@@ -1164,29 +1164,22 @@ function createDelivery(){showToast('Redirecting to Delivery Notes...');setTimeo
 var lhHeader='', lhFooter='', letterheadImg='', letterheadMode='default';
 
 function loadLetterheadFromStorage(){
-  try{
-    var raw=localStorage.getItem('sbr_letterhead');
-    if(raw){
-      var d=JSON.parse(raw);
-      letterheadImg=d.img||'';
-      letterheadMode=d.mode||'default';
-      lhHeader=d.hdr||'';
-      lhFooter=d.ftr||'';
-      if(letterheadImg&&!lhHeader){
-        var img=new Image();
-        img.onload=function(){cropLetterheadParts(img);};
-        img.src=letterheadImg;
-      }
-    }
-  }catch(e){}
+  // Load from cloud data (already fetched by initPage)
+  var lh=SBR.letterhead||{};
+  letterheadImg=lh.img||'';
+  letterheadMode=lh.mode||'default';
+  lhHeader=lh.hdr||'';
+  lhFooter=lh.ftr||'';
+  if(letterheadImg&&!lhHeader){
+    var img=new Image();
+    img.onload=function(){cropLetterheadParts(img);};
+    img.src=letterheadImg;
+  }
 }
 
 function saveLetterheadToStorage(){
-  try{
-    localStorage.setItem('sbr_letterhead',JSON.stringify({
-      img:letterheadImg,mode:letterheadMode,hdr:lhHeader,ftr:lhFooter
-    }));
-  }catch(e){}
+  SBR.letterhead={img:letterheadImg,mode:letterheadMode,hdr:lhHeader,ftr:lhFooter};
+  saveAllData();
 }
 
 function cropLetterheadParts(img){

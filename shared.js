@@ -27,7 +27,9 @@ const SBR = {
   dIdCtr:90, projIdCtr:32, svcIdCtr:37, hrIdCtr:4, supplierIdCtr:6, apptIdCtr:2,
   companyInfo:{ name:'SBR System Technical Services L.L.C', addr:'Dubai, UAE',
     phone:'+971 4 XXX XXXX', email:'info@sbrsystem.ae', trn:'', bank:'Emirates NBD',
-    acname:'SBR System Technical Services L.L.C', acnum:'', iban:'', swift:'' }
+    acname:'SBR System Technical Services L.L.C', acnum:'', iban:'', swift:'' },
+  // Letterhead stored on cloud so it works on any browser/device
+  letterhead:{ img:'', hdr:'', ftr:'', mode:'default' }
 };
 
 // ── SIDEBAR ──
@@ -135,7 +137,7 @@ function applyData(d){
   if(!d) return;
   const keys = ['clients','invoices','receipts','deliveryNotes','projects','quotations',
     'amcQuotations','amcContracts','productDB','services','suppliers','staff',
-    'appointments','purchases','inventory','cats','settings','companyInfo'];
+    'appointments','purchases','inventory','cats','settings','companyInfo','letterhead'];
   keys.forEach(k=>{ if(d[k]!==undefined) SBR[k]=d[k]; });
   const ctrs = ['qtIdCtr','quotGroupCtr','pIdCtr','iIdCtr','recIdCtr','dIdCtr',
     'projIdCtr','svcIdCtr','hrIdCtr','supplierIdCtr','apptIdCtr'];

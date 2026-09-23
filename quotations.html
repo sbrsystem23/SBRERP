@@ -721,41 +721,56 @@ function renderSystems(){
     itemsHtml+='</div></div>';
 
     // Services section
-    let // Build service section
+    let // Build service section — use SAME grid as item rows so columns align perfectly
     svcsHtml='<div class="svc-section">'
       +'<div class="svc-hdr"><span class="svc-hdr-title">Services</span>'
       +'<div class="svc-hdr-btns">'
       +'<button class="btn btn-o btn-xs" onclick="openSvcModal('+si+')">+ From DB</button>'
       +'<button class="btn btn-o btn-xs" onclick="addBlankSvc('+si+')">+ Manual</button>'
-      +'</div></div>'
-      // Column header row aligned with item table
-      +'<div style="display:flex;background:#f0f4f8;border-bottom:1px solid var(--border);font-size:10px;font-weight:600;color:var(--text2);overflow-x:auto">'
-      +'<div style="flex:1;min-width:120px;padding:5px 8px">Service Name</div>'
-      +'<div style="width:68px;flex-shrink:0;padding:5px 8px;text-align:center">Qty</div>'
-      +'<div style="width:90px;flex-shrink:0;padding:5px 8px;text-align:right">Price (AED)</div>'
-      +'<div style="width:90px;flex-shrink:0;padding:5px 8px;text-align:right">Total</div>'
-      +'<div style="width:36px;flex-shrink:0"></div>'
+      +'</div></div>';
+    // Service header row — same grid as item table
+    svcsHtml+='<div class="item-hdr" style="grid-template-columns:'+gc+'">'
+      +'<div class="ic" style="font-size:10px;font-weight:700;color:var(--text2);justify-content:center">#</div>'
+      +(colState.img?'<div class="ic"></div>':'')
+      +'<div class="ic" style="font-size:10px;font-weight:700;color:var(--text2)">Service Name</div>'
+      +(colState.model?'<div class="ic"></div>':'')
+      +(colState.qty?'<div class="ic" style="font-size:10px;font-weight:700;color:var(--text2);justify-content:center">Qty</div>':'')
+      +(colState.price?'<div class="ic" style="font-size:10px;font-weight:700;color:var(--text2);justify-content:flex-end">Price</div>':'')
+      +(colState.disc?'<div class="ic ic-disc" style="font-size:10px;font-weight:700;color:var(--text2);justify-content:center">Disc%</div>':'')
+      +(colState.vat?'<div class="ic ic-vat" style="font-size:10px;font-weight:700;color:var(--text2);justify-content:center">VAT%</div>':'')
+      +(colState.total?'<div class="ic" style="font-size:10px;font-weight:700;color:var(--text2);justify-content:flex-end">Total</div>':'')
+      +'<div class="ic"></div>'
       +'</div>';
     (sys.svcs||[]).forEach(function(s,svi){
       var c=calcSvc(s);
       sysNet+=c.net; sysVat+=c.vatAmt;
       if(s.isSummary){
         var sn=(sys.svcs||[]).filter(function(x){return !x.isSummary;}).reduce(function(sum,x){return sum+calcSvc(x).net;},0);
-        svcsHtml+='<div style="display:flex;align-items:center;background:#f0fdf4;border-bottom:1px solid var(--border);font-weight:700;font-size:11px;color:var(--green)">'
-          +'<div style="flex:1;padding:7px 8px">Services Subtotal</div>'
-          +'<div style="width:68px;flex-shrink:0"></div>'
-          +'<div style="width:90px;flex-shrink:0"></div>'
-          +'<div style="width:90px;flex-shrink:0;padding:7px 8px;text-align:right">AED '+fmt(sn)+'</div>'
-          +'<div style="width:36px;flex-shrink:0;display:flex;justify-content:center"><button onclick="removeSvc('+si+','+svi+')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px">✕</button></div>'
+        svcsHtml+='<div class="item-row" style="grid-template-columns:'+gc+';background:#f0fdf4">'
+          +'<div class="ic ic-c" style="font-size:10px;color:var(--text3)">∑</div>'
+          +(colState.img?'<div class="ic"></div>':'')
+          +'<div class="ic" style="font-weight:700;color:var(--green)">Services Subtotal</div>'
+          +(colState.model?'<div class="ic"></div>':'')
+          +(colState.qty?'<div class="ic"></div>':'')
+          +(colState.price?'<div class="ic"></div>':'')
+          +(colState.disc?'<div class="ic ic-disc"></div>':'')
+          +(colState.vat?'<div class="ic ic-vat"></div>':'')
+          +(colState.total?'<div class="ic ic-r ic-total">AED '+fmt(sn)+'</div>':'')
+          +'<div class="ic ic-c"><button onclick="removeSvc('+si+','+svi+')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px">✕</button></div>'
           +'</div>';
         return;
       }
-      svcsHtml+='<div style="display:flex;align-items:center;border-bottom:1px solid #f0f4f8;overflow-x:auto">'
-        +'<div style="flex:1;min-width:120px"><input class="svc-inp" value="'+escH(s.name||'')+'" placeholder="Service name..." oninput="updateSvcName('+si+','+svi+',this.value)" style="width:100%;border:none;background:transparent;font-size:12px;padding:7px 8px;outline:none"></div>'
-        +'<div style="width:68px;flex-shrink:0"><input type="number" value="'+(s.qty||1)+'" min="1" oninput="updateSvcQty('+si+','+svi+',this.value)" style="width:100%;border:none;background:transparent;font-size:12px;padding:7px 8px;text-align:center;outline:none"></div>'
-        +'<div style="width:90px;flex-shrink:0"><input type="number" value="'+(s.price||0)+'" oninput="updateSvcPrice('+si+','+svi+',this.value)" style="width:100%;border:none;background:transparent;font-size:12px;padding:7px 8px;text-align:right;outline:none"></div>'
-        +'<div style="width:90px;flex-shrink:0;padding:7px 8px;text-align:right;font-weight:700;color:var(--blue);font-size:12px">AED '+fmt(c.net+c.vatAmt)+'</div>'
-        +'<div style="width:36px;flex-shrink:0;display:flex;justify-content:center"><button onclick="removeSvc('+si+','+svi+')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:4px">✕</button></div>'
+      svcsHtml+='<div class="item-row" style="grid-template-columns:'+gc+'">'
+        +'<div class="ic ic-c ic-num">'+(si+1)+'.'+(svi+1)+'</div>'
+        +(colState.img?'<div class="ic ic-c"><div style="width:34px;height:34px;border-radius:6px;background:#f0f4f8;display:flex;align-items:center;justify-content:center;font-size:16px">🔧</div></div>':'')
+        +'<div class="ic ic-name"><input style="border:none;background:transparent;font-size:12px;font-weight:500;width:100%;outline:none;padding:0" value="'+escH(s.name||'')+'" placeholder="Service name..." oninput="updateSvcName('+si+','+svi+',this.value)"></div>'
+        +(colState.model?'<div class="ic ic-model"></div>':'')
+        +(colState.qty?'<div class="ic ic-c"><input class="ic-inp" type="number" value="'+(s.qty||1)+'" min="1" oninput="updateSvcQty('+si+','+svi+',this.value)" style="width:50px;text-align:center"></div>':'')
+        +(colState.price?'<div class="ic ic-r"><input class="ic-inp" type="number" value="'+(s.price||0)+'" oninput="updateSvcPrice('+si+','+svi+',this.value)"></div>':'')
+        +(colState.disc?'<div class="ic ic-c ic-disc"><span style="font-size:10px;color:var(--text3)">—</span></div>':'')
+        +(colState.vat?'<div class="ic ic-c ic-vat"><span style="font-size:11px;color:var(--green)">5%</span></div>':'')
+        +(colState.total?'<div class="ic ic-r ic-total">AED '+fmt(c.net+c.vatAmt)+'</div>':'')
+        +'<div class="ic ic-c"><button onclick="removeSvc('+si+','+svi+')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:15px" title="Remove">✕</button></div>'
         +'</div>';
     });
     svcsHtml+='</div>';

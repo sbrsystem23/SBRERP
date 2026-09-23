@@ -1154,7 +1154,7 @@ function printQuotation(){
     +'<div class="info-box"><div class="ibox-t">Quotation Details</div>'
     +'<div class="irow"><span class="ilbl">Quotation No.</span><span class="ival">'+escH(qtNum)+'</span></div>'
     +'<div class="irow"><span class="ilbl">Date</span><span class="ival">'+escH(qtDate)+'</span></div>'
-    +(qtRef?'<div class="irow"><span class="ilbl">Project Ref</span><span class="ival">'+escH(qtRef)+'</span></div>':'')
+    +'<div class="irow"><span class="ilbl">Project Ref</span><span class="ival">'+escH(qtRef||'—')+'</span></div>'
     +'<div class="irow"><span class="ilbl">Status</span><span class="ival '+(qtStatus==='Approved'?'grn':'')+'">'+escH(qtStatus)+'</span></div>'
     +(qtApproved&&qtStatus==='Approved'?'<div class="irow"><span class="ilbl">Approved</span><span class="ival grn">'+escH(qtApproved)+'</span></div>':'')
     +'</div></div>'

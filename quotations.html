@@ -1152,11 +1152,10 @@ function printQuotation(){
     +'<div class="info-grid">'
     +'<div class="info-box"><div class="ibox-t">Bill To</div>'+cHtml+'</div>'
     +'<div class="info-box"><div class="ibox-t">Quotation Details</div>'
-    +'<div class="irow"><span class="ilbl">Quotation No.</span><span class="ival">'+escH(qtNum)+'</span></div>'
-    +'<div class="irow"><span class="ilbl">Date</span><span class="ival">'+escH(qtDate)+'</span></div>'
+    +'<div class="irow"><span class="ilbl">Quotation No.</span><span class="ival" style="font-weight:700">'+escH(qtNum)+'</span></div>'
     +'<div class="irow"><span class="ilbl">Project Ref</span><span class="ival">'+escH(qtRef||'—')+'</span></div>'
     +'<div class="irow"><span class="ilbl">Status</span><span class="ival '+(qtStatus==='Approved'?'grn':'')+'">'+escH(qtStatus)+'</span></div>'
-    +(qtApproved&&qtStatus==='Approved'?'<div class="irow"><span class="ilbl">Approved</span><span class="ival grn">'+escH(qtApproved)+'</span></div>':'')
+
     +'</div></div>'
     +sysBodies
     +'<div style="display:flex;justify-content:flex-end;margin-top:14px"><div class="totals">'

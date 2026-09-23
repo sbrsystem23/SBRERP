@@ -1126,9 +1126,8 @@ function printQuotation(){
     +'.pg-hdr{width:100%}'
     +'.pg-hdr img{width:100%;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
     // Doc title bar sits BELOW the header image — no overlap
-    +'.doc-title-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:rgba(255,255,255,.9);border-bottom:2px solid #0F4C81}'
-    +'.doc-title-bar .dtype{font-size:20px;font-weight:900;color:#0F4C81;letter-spacing:2px}'
-    +'.doc-title-bar .dnum{font-size:12px;font-weight:700;color:#1a6bb5}'
+    +'.doc-title-bar{display:block;padding:6px 24px 6px;background:rgba(255,255,255,0.95);border-bottom:3px solid #0F4C81;margin-top:0}'
+    +'.doc-title-bar .dtype{font-size:22px;font-weight:900;color:#0F4C81;letter-spacing:3px;display:block}'
     +'.pg-body{flex:1;padding:12px 24px 160px}' // bottom padding reserves space for fixed footer
     // Footer fixed to bottom of page
     +'.pg-ftr{position:fixed;bottom:0;left:0;width:100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
@@ -1148,7 +1147,7 @@ function printQuotation(){
     +'<div class="lh-bg"><img src="'+_LH_FULL+'"></div>'
     +'<div class="page">'
     +'<div class="pg-hdr"><img src="'+_LH_HDR+'"></div>'
-    +'<div class="doc-title-bar"><div class="dtype">QUOTATION</div><div class="dnum">'+escH(qtNum)+'</div></div>'
+    +'<div class="doc-title-bar"><div class="dtype">QUOTATION</div></div>'
     +'<div class="pg-body">'
     +'<div class="info-grid">'
     +'<div class="info-box"><div class="ibox-t">Bill To</div>'+cHtml+'</div>'

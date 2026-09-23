@@ -43,6 +43,27 @@
   <div class="field mb-12"><label class="flbl">SWIFT Code</label><input class="fi" id="s-swift"></div>
   <button class="btn btn-p" onclick="saveSettings()">💾 Save Settings</button>
 </div>
+
+<!-- Letterhead Section -->
+<div class="card" style="margin-top:16px">
+  <div class="card-title">📄 Letterhead / Document Header</div>
+  <p style="font-size:11px;color:var(--text2);margin-bottom:14px;line-height:1.6">
+    Upload your company letterhead image. It will be used on all printed documents — Quotations, Invoices, Delivery Notes etc.<br>
+    <strong>Recommended:</strong> A4 size, high resolution PNG or JPG. Stored on cloud — works on any device.
+  </p>
+  <input type="file" id="lh-upload" accept="image/*" style="display:none" onchange="uploadLetterhead(this)">
+  <div id="lh-preview-wrap">
+    <div style="padding:24px;text-align:center;color:var(--text2);border:2px dashed var(--border);border-radius:8px">
+      <div style="font-size:32px;margin-bottom:8px">📄</div>
+      <div style="font-size:12px;margin-bottom:12px">No letterhead uploaded.<br>Documents will use the default SBR header.</div>
+      <button class="btn btn-p" onclick="document.getElementById('lh-upload').click()">⬆ Upload Letterhead Image</button>
+    </div>
+  </div>
+  <div style="margin-top:10px;font-size:11px;color:var(--text2)">
+    Current mode: <strong id="lh-mode-label">Default</strong>
+  </div>
+</div>
+
 </div>
 <script src="shared.js"></script>
 <script>

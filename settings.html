@@ -47,6 +47,87 @@
 <script src="shared.js"></script>
 <script>
 
+// Letterhead functions (shared with quotations page)
+var lhHeader='', lhFooter='', letterheadImg='', letterheadMode='default';
+
+function loadLetterheadFromStorage(){
+  try{
+    var raw=localStorage.getItem('sbr_letterhead');
+    if(raw){
+      var d=JSON.parse(raw);
+      letterheadImg=d.img||''; letterheadMode=d.mode||'default';
+      lhHeader=d.hdr||''; lhFooter=d.ftr||'';
+    }
+  }catch(e){}
+}
+
+function saveLetterheadToStorage(){
+  try{
+    localStorage.setItem('sbr_letterhead',JSON.stringify({img:letterheadImg,mode:letterheadMode,hdr:lhHeader,ftr:lhFooter}));
+  }catch(e){showToast('Letterhead too large for storage','error');}
+}
+
+function cropLetterheadParts(img){
+  var w=img.width,h=img.height;
+  function cropTo(sx,sy,sw,sh){
+    var c=document.createElement('canvas');c.width=sw;c.height=sh;
+    c.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,sw,sh);
+    return c.toDataURL('image/jpeg',0.9);
+  }
+  lhHeader=cropTo(0,0,w,Math.round(h*0.085));
+  lhFooter=cropTo(0,h-Math.round(h*0.12),w,Math.round(h*0.12));
+  saveLetterheadToStorage();
+}
+
+function uploadLetterhead(input){
+  var file=input.files[0]; if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var tempImg=new Image();
+    tempImg.onload=function(){
+      var maxW=2480;
+      var ratio=Math.min(maxW/tempImg.width,1);
+      var nw=Math.round(tempImg.width*ratio),nh=Math.round(tempImg.height*ratio);
+      var canvas=document.createElement('canvas');canvas.width=nw;canvas.height=nh;
+      canvas.getContext('2d').drawImage(tempImg,0,0,nw,nh);
+      letterheadImg=canvas.toDataURL('image/jpeg',0.9);
+      letterheadMode='custom';
+      cropLetterheadParts(tempImg);
+      showToast('✅ Letterhead uploaded! Will be used on all documents.');
+      renderLetterheadPreview();
+    };
+    tempImg.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeLetterhead(){
+  if(!confirm('Remove letterhead? Documents will use the default SBR header.'))return;
+  letterheadImg=''; letterheadMode='default'; lhHeader=''; lhFooter='';
+  saveLetterheadToStorage(); renderLetterheadPreview();
+  showToast('Letterhead removed');
+}
+
+function renderLetterheadPreview(){
+  var wrap=document.getElementById('lh-preview-wrap');
+  var modeLabel=document.getElementById('lh-mode-label');
+  if(modeLabel) modeLabel.textContent=letterheadMode==='custom'?'Custom Letterhead':'Default SBR Header';
+  if(!wrap)return;
+  if(letterheadImg){
+    wrap.innerHTML='<img src="'+letterheadImg+'" style="width:100%;border-radius:6px;border:1px solid var(--border);margin-bottom:8px">'
+      +'<div style="display:flex;gap:8px">'
+      +'<button class="btn btn-o btn-sm" onclick="removeLetterhead()">✕ Remove</button>'
+      +'<button class="btn btn-o btn-sm" onclick="document.getElementById('lh-upload').click()">↺ Replace</button>'
+      +'</div>';
+  } else {
+    wrap.innerHTML='<div style="padding:20px;text-align:center;color:var(--text2);border:2px dashed var(--border);border-radius:8px">'
+      +'<div style="font-size:24px;margin-bottom:8px">📄</div>'
+      +'<div style="font-size:12px;margin-bottom:12px">No letterhead uploaded. Using default SBR header.</div>'
+      +'<button class="btn btn-p btn-sm" onclick="document.getElementById('lh-upload').click()">⬆ Upload Letterhead</button>'
+      +'</div>';
+  }
+}
+
 function render(){
   const ci = SBR.companyInfo||{};
   sv('s-name',ci.name);sv('s-trn',ci.trn);sv('s-phone',ci.phone);sv('s-email',ci.email);sv('s-addr',ci.addr);

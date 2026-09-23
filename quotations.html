@@ -105,8 +105,14 @@ body.sb-collapsed #view-builder{
 .svc-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#e8f1fb}
 .svc-hdr-title{font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px}
 .svc-hdr-btns{display:flex;gap:6px}
-.svc-row{display:grid;grid-template-columns:1fr 60px 90px 30px;align-items:center;border-bottom:.5px solid var(--border);padding:0 4px}
+.svc-row{display:flex;align-items:center;border-bottom:.5px solid var(--border);min-width:500px}
+.svc-name-cell{flex:1;min-width:0}
+.svc-qty-cell{width:68px;flex-shrink:0}
+.svc-price-cell{width:90px;flex-shrink:0}
+.svc-total-cell{width:90px;flex-shrink:0;text-align:right;padding-right:8px}
+.svc-del-cell{width:36px;flex-shrink:0;display:flex;justify-content:center}
 .svc-inp{border:none;background:transparent;font-size:11px;padding:7px 6px;outline:none;width:100%}
+.svc-inp.right{text-align:right}
 .svc-total{font-size:11px;font-weight:600;color:var(--blue);padding:7px 8px;text-align:right}
 .svc-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:4px;line-height:1}
 .svc-del:hover{color:var(--red)}
@@ -1083,20 +1089,28 @@ function printQuotation(){
 
 function buildLetterhead(docNum, docType){
   var ci=SBR.companyInfo||{};
-  // Try to get logo from index page
-  var logoSrc='';
-  var imgs=document.querySelectorAll('img');
-  imgs.forEach(function(img){if(img.src&&img.src.startsWith('data:image'))logoSrc=img.src;});
-  return '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    +'<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a}'
+  var printStyles='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
+    +'*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a}'
     +'@media print{@page{margin:0;size:A4}body{margin:0}.no-print{display:none!important}}'
-    +'</style></head><body>'
-    +'<div style="background:#0F4C81;padding:18px 30px;display:flex;align-items:center;justify-content:space-between">'
+    +'</style></head><body>';
+  // Use uploaded letterhead header if available
+  if(lhHeader){
+    return printStyles
+      +'<div style="position:relative">'
+      +'<img src="'+lhHeader+'" style="width:100%;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact">'
+      +'<div style="position:absolute;bottom:8px;right:20px;text-align:right">'
+      +'<div style="font-size:18px;font-weight:700;color:#0F4C81;text-shadow:0 0 3px #fff">'+escH(docType)+'</div>'
+      +'<div style="font-size:13px;font-weight:700;color:#1a6bb5;text-shadow:0 0 3px #fff">'+escH(docNum)+'</div>'
+      +'</div></div>';
+  }
+  // Default header
+  var logoSrc='';
+  document.querySelectorAll('img').forEach(function(img){if(img.src&&img.src.startsWith('data:image'))logoSrc=img.src;});
+  return printStyles
+    +'<div style="background:#0F4C81;padding:18px 30px;display:flex;align-items:center;justify-content:space-between;-webkit-print-color-adjust:exact;print-color-adjust:exact">'
     +(logoSrc?'<img src="'+logoSrc+'" style="height:48px;object-fit:contain;filter:brightness(0) invert(1)">':'<div style="color:#fff;font-size:18px;font-weight:700">SBR System</div>')
-    +'<div style="text-align:right">'
-    +'<div style="font-size:22px;font-weight:700;color:#fff;letter-spacing:1px">'+escH(docType)+'</div>'
-    +'<div style="font-size:16px;font-weight:700;color:rgba(255,255,255,.8);margin-top:2px">'+escH(docNum)+'</div>'
-    +'</div></div>'
+    +'<div style="text-align:right"><div style="font-size:22px;font-weight:700;color:#fff;letter-spacing:1px">'+escH(docType)+'</div>'
+    +'<div style="font-size:16px;font-weight:700;color:rgba(255,255,255,.8);margin-top:2px">'+escH(docNum)+'</div></div></div>'
     +'<div style="background:#f8fafc;padding:10px 30px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #e2e8f0">'
     +'<div><div style="font-size:12px;font-weight:700;color:#0F4C81">'+(ci.name||'SBR System Technical Services L.L.C')+'</div>'
     +'<div style="font-size:10px;color:#64748b;margin-top:2px">'+(ci.addr||'Dubai, UAE')+(ci.trn?'  |  TRN: '+ci.trn:'')+'</div></div>'
@@ -1108,7 +1122,10 @@ function buildLetterhead(docNum, docType){
 
 function buildLetterFooter(){
   var ci=SBR.companyInfo||{};
-  return '<div style="background:#0F4C81;padding:12px 30px;margin-top:30px;display:flex;justify-content:space-between;align-items:center">'
+  if(lhFooter){
+    return '<div style="margin-top:30px"><img src="'+lhFooter+'" style="width:100%;display:block;-webkit-print-color-adjust:exact;print-color-adjust:exact"></div></body></html>';
+  }
+  return '<div style="background:#0F4C81;padding:12px 30px;margin-top:30px;display:flex;justify-content:space-between;align-items:center;-webkit-print-color-adjust:exact;print-color-adjust:exact">'
     +'<div style="font-size:10px;color:rgba(255,255,255,.7)">'+(ci.name||'SBR System Technical Services L.L.C')+'</div>'
     +(ci.bank?'<div style="font-size:10px;color:rgba(255,255,255,.7)">Bank: '+escH(ci.bank)+(ci.iban?' | IBAN: '+escH(ci.iban):'')+'</div>':'')
     +'<div style="font-size:10px;color:rgba(255,255,255,.7)">www.sbrsystem.ae</div>'
@@ -1141,6 +1158,95 @@ function createProject(){showToast('Redirecting to Projects...');setTimeout(()=>
 function createInvoice(){showToast('Redirecting to Invoices...');setTimeout(()=>navTo('invoices'),1000);}
 function createDelivery(){showToast('Redirecting to Delivery Notes...');setTimeout(()=>navTo('delivery'),1000);}
 
+
+
+// ── LETTERHEAD SYSTEM ──
+var lhHeader='', lhFooter='', letterheadImg='', letterheadMode='default';
+
+function loadLetterheadFromStorage(){
+  try{
+    var raw=localStorage.getItem('sbr_letterhead');
+    if(raw){
+      var d=JSON.parse(raw);
+      letterheadImg=d.img||'';
+      letterheadMode=d.mode||'default';
+      lhHeader=d.hdr||'';
+      lhFooter=d.ftr||'';
+      if(letterheadImg&&!lhHeader){
+        var img=new Image();
+        img.onload=function(){cropLetterheadParts(img);};
+        img.src=letterheadImg;
+      }
+    }
+  }catch(e){}
+}
+
+function saveLetterheadToStorage(){
+  try{
+    localStorage.setItem('sbr_letterhead',JSON.stringify({
+      img:letterheadImg,mode:letterheadMode,hdr:lhHeader,ftr:lhFooter
+    }));
+  }catch(e){}
+}
+
+function cropLetterheadParts(img){
+  var w=img.width,h=img.height;
+  var headerH=Math.round(h*0.085);
+  var footerH=Math.round(h*0.12);
+  var footerY=h-footerH;
+  function cropTo(sx,sy,sw,sh,maxW){
+    var ratio=Math.min(maxW/sw,1);
+    var nw=Math.round(sw*ratio),nh=Math.round(sh*ratio);
+    var c=document.createElement('canvas');c.width=nw;c.height=nh;
+    c.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,nw,nh);
+    return c.toDataURL('image/jpeg',0.9);
+  }
+  lhHeader=cropTo(0,0,w,headerH,2480);
+  lhFooter=cropTo(0,footerY,w,footerH,2480);
+  saveLetterheadToStorage();
+}
+
+function uploadLetterhead(input){
+  var file=input.files[0];
+  if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var tempImg=new Image();
+    tempImg.onload=function(){
+      // Compress
+      var maxW=2480;
+      var ratio=Math.min(maxW/tempImg.width,1);
+      var nw=Math.round(tempImg.width*ratio),nh=Math.round(tempImg.height*ratio);
+      var canvas=document.createElement('canvas');canvas.width=nw;canvas.height=nh;
+      canvas.getContext('2d').drawImage(tempImg,0,0,nw,nh);
+      letterheadImg=canvas.toDataURL('image/jpeg',0.9);
+      letterheadMode='custom';
+      cropLetterheadParts(tempImg);
+      showToast('\u2705 Letterhead uploaded!');
+      renderLetterheadPreview();
+    };
+    tempImg.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeLetterhead(){
+  if(!confirm('Remove letterhead?'))return;
+  letterheadImg='';letterheadMode='default';lhHeader='';lhFooter='';
+  saveLetterheadToStorage();
+  renderLetterheadPreview();
+  showToast('Letterhead removed');
+}
+
+function renderLetterheadPreview(){
+  var wrap=document.getElementById('lh-preview-wrap');
+  if(!wrap)return;
+  if(letterheadImg){
+    wrap.innerHTML='<img src="'+letterheadImg+'" style="width:100%;border-radius:6px;border:1px solid var(--border)"><div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-o btn-sm" onclick="removeLetterhead()">✕ Remove</button><button class="btn btn-o btn-sm" onclick="document.getElementById(\'lh-upload\').click()">↺ Replace</button></div>';
+  } else {
+    wrap.innerHTML='<div style="padding:20px;text-align:center;color:var(--text2);border:2px dashed var(--border);border-radius:8px"><div style="font-size:24px;margin-bottom:8px">📄</div><div style="font-size:12px;margin-bottom:10px">No letterhead uploaded.<br>Using default SBR header.</div><button class="btn btn-p btn-sm" onclick="document.getElementById(\'lh-upload\').click()">⬆ Upload Letterhead</button></div>';
+  }
+}
 
 // ── BUILDER POSITIONING ──
 function positionBuilder(){
@@ -1177,6 +1283,7 @@ window.addEventListener('resize', positionBuilder);
 // ═══════════════════════════════════════════
 function render(){renderList();}
 window.addEventListener('load',async function(){
+  loadLetterheadFromStorage();
   positionBuilder();
   await initPage('quotations','Quotations',function(){render();});
 });

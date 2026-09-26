@@ -1150,9 +1150,10 @@ function printQuotation(){
     +'<div class="doc-title-bar"><div class="dtype">QUOTATION</div></div>'
     +'<div class="pg-body">'
     +'<div class="info-grid">'
-    +'<div class="info-box"><div class="ibox-t">Bill To</div>'+cHtml+'</div>'
+    +'<div class="info-box"><div class="ibox-t">Client</div>'+cHtml+'</div>'
     +'<div class="info-box"><div class="ibox-t">Quotation Details</div>'
     +'<div class="irow"><span class="ilbl">Quotation No.</span><span class="ival" style="font-weight:700">'+escH(qtNum)+'</span></div>'
+    +'<div class="irow"><span class="ilbl">Date</span><span class="ival">'+escH(qtDate)+'</span></div>'
     +'<div class="irow"><span class="ilbl">Project Ref</span><span class="ival">'+escH(qtRef||'—')+'</span></div>'
     +'<div class="irow"><span class="ilbl">Status</span><span class="ival '+(qtStatus==='Approved'?'grn':'')+'">'+escH(qtStatus)+'</span></div>'
 

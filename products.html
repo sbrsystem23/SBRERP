@@ -151,7 +151,10 @@
       <div class="page-title">📦 Products</div>
       <div class="page-sub">Manage product catalogue, pricing &amp; supplier info</div>
     </div>
-    <button class="btn btn-p" onclick="openAddModal()">＋ Add Product</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-o" onclick="openLookupModal()">🌐 Fetch Online</button>
+      <button class="btn btn-p" onclick="openAddModal()">＋ Add Product</button>
+    </div>
   </div>
 
   <!-- KPI ROW -->
@@ -1081,9 +1084,10 @@ document.querySelectorAll('.modal-tab').forEach((t,i)=>{
 let _lookupSrc = 'upc';
 
 function openLookupModal(){
-  // Pre-fill query from current modal fields
-  const name  = document.getElementById('p-name').value.trim();
-  const model = document.getElementById('p-model').value.trim();
+  // Pre-fill query from product form fields (if the form modal is open)
+  const formOpen = document.getElementById('prod-modal').style.display === 'flex';
+  const name  = formOpen ? document.getElementById('p-name').value.trim() : '';
+  const model = formOpen ? document.getElementById('p-model').value.trim() : '';
   const q = model||name||'';
   document.getElementById('lookup-q').value = q;
   document.getElementById('lookup-modal').style.display='flex';
@@ -1192,6 +1196,10 @@ function applyLookupResult(idx){
   const item = items[idx];
   if(!item) return;
 
+  // Open the add modal first (clears fields), then fill
+  const modalOpen = document.getElementById('prod-modal').style.display === 'flex';
+  if(!modalOpen) openAddModal();
+
   // Fill Basic Info tab
   if(item.title) document.getElementById('p-name').value = item.title;
   if(item.brand) document.getElementById('p-brand').value = item.brand;
@@ -1206,10 +1214,10 @@ function applyLookupResult(idx){
     refreshImgPreview();
   }
 
-  // Fill pricing from first offer (as cost in USD)
+  // Fill pricing from first offer
   const offer = (item.offers||[])[0];
   if(offer && offer.price){
-    const currMap = {USD:'USD',AED:'AED',EUR:'EUR',GBP:'GBP'};
+    const currMap = {USD:'USD',AED:'AED',EUR:'EUR',GBP:'GBP',CNY:'CNY'};
     const offerCur = currMap[offer.currency||'USD']||'USD';
     document.getElementById('p-cost').value = offer.price;
     document.getElementById('p-currency').value = offerCur;
@@ -1218,7 +1226,7 @@ function applyLookupResult(idx){
 
   closeLookupModal();
   showTab('basic');
-  showToast('Product info filled in — review and adjust pricing ✅');
+  showToast('Product info filled — review pricing then click Save ✅');
 }
 
 // ── SAVE LOOKUP RESULT DIRECTLY TO DATABASE ──

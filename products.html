@@ -1220,6 +1220,78 @@ function applyLookupResult(idx){
   showTab('basic');
   showToast('Product info filled in — review and adjust pricing ✅');
 }
+
+// ── SAVE LOOKUP RESULT DIRECTLY TO DATABASE ──
+function addLookupToDB(idx){
+  const items = window._lookupItems||[];
+  const item  = items[idx];
+  if(!item) return;
+
+  // Disable button while saving
+  const btn = document.getElementById('add-db-btn-'+idx);
+  if(btn){ btn.textContent='⏳'; btn.disabled=true; }
+
+  const currMap = {USD:'USD',AED:'AED',EUR:'EUR',GBP:'GBP',CNY:'CNY'};
+  const offer    = (item.offers||[])[0]||{};
+  const offerCur = currMap[offer.currency]||'USD';
+  const cost     = Number(offer.price||0);
+  const rates    = {AED:1, USD:3.67, EUR:4.1, GBP:4.8, CNY:0.51};
+  const exr      = rates[offerCur]||1;
+  const costAed  = offerCur==='AED' ? cost : cost * exr;
+  const mk       = 50; // default 50% markup — user can edit later
+  const sell     = parseFloat((costAed * (1 + mk/100)).toFixed(2));
+  const imgUrl   = (item.images||[])[0]||'';
+
+  function doSave(imgData){
+    if(!SBR.productDB) SBR.productDB=[];
+    const obj = {
+      id          : SBR.pIdCtr = (SBR.pIdCtr||0)+1,
+      name        : item.title||'Untitled Product',
+      model       : item.model||'',
+      brand       : item.brand||'',
+      cat         : 'General',
+      subcat      : '',
+      desc        : (item.description||'').substring(0,500),
+      cost,
+      currency    : offerCur,
+      mk,
+      sell,
+      vat         : '5',
+      maxDisc     : 10,
+      defDisc     : 0,
+      supplierRows: [{name:'',cost,currency:offerCur,notes:''}],
+      extraCharges: [{label:'Shipping',amount:0},{label:'Admin Charges',amount:0}],
+      supplier    : '',
+      supName     : item.title||'',
+      supModel    : item.model||'',
+      baseCost    : parseFloat(costAed.toFixed(2)),
+      sbrImg      : imgData,
+      linkedSvcs  : []
+    };
+    SBR.productDB.push(obj);
+    saveAllData();
+    closeLookupModal();
+    renderCatChips();
+    updateSubcatFilter();
+    renderProds();
+    updateKPIs();
+    showToast('✅ "'+obj.name.substring(0,40)+'" saved — edit to adjust pricing');
+  }
+
+  // Try to fetch + compress the image; fall back to raw URL if CORS blocks
+  if(imgUrl){
+    fetch(imgUrl)
+      .then(r=>r.blob())
+      .then(blob=>{
+        const reader = new FileReader();
+        reader.onload = e => compressImage(e.target.result, 600, 600, 0.7, doSave);
+        reader.readAsDataURL(blob);
+      })
+      .catch(()=> doSave(imgUrl)); // CORS blocked — store URL directly
+  } else {
+    doSave('');
+  }
+}
 </script>
 </body>
 </html>

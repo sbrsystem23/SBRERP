@@ -1164,6 +1164,29 @@ function fetchTimed(url, ms){
   return fetch(url, {signal:ctrl.signal}).finally(()=>clearTimeout(tid));
 }
 
+// Fetch via CORS proxy — races multiple proxies, returns first good HTML string
+function fetchViaProxy(url, totalMs){
+  const proxies = [
+    `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+  ];
+  return new Promise(resolve=>{
+    let finished=false, left=proxies.length;
+    const finish=t=>{ if(!finished){ finished=true; resolve(t||''); }};
+    const tid=setTimeout(()=>finish(''), totalMs);
+    proxies.forEach(pu=>{
+      fetchTimed(pu, totalMs-1000)
+        .then(async r=>{
+          if(!finished && r.ok){
+            const t=await r.text();
+            if(t && t.length>500){ clearTimeout(tid); finish(t); }
+          }
+        }).catch(()=>{})
+        .finally(()=>{ if(!finished && --left===0){ clearTimeout(tid); finish(''); }});
+    });
+  });
+}
+
 // ── Parse JSON-LD structured product data from any retailer HTML ──
 function parseHtmlJsonLd(html, sourceName){
   const results = [];
@@ -1199,86 +1222,96 @@ function parseHtmlJsonLd(html, sourceName){
   return results;
 }
 
+// ── Extract Open Graph product meta from any page ──
+function parseOpenGraph(html, sourceName){
+  const get=p=>{
+    const m=html.match(new RegExp('<meta[^>]+property=["\']'+p+'["\'][^>]+content=["\']([^"\']{2,})["\']','i'))
+      ||html.match(new RegExp('<meta[^>]+content=["\']([^"\']{2,})["\'][^>]+property=["\']'+p+'["\']','i'));
+    return m?m[1]:'';
+  };
+  const title=(get('og:title')||'').replace(/\s+/g,' ').trim();
+  if(!title||title.length<4) return [];
+  const desc=get('og:description');
+  const img=get('og:image');
+  const priceRaw=get('product:price:amount')||get('og:price:amount');
+  const price=parseFloat(priceRaw)||0;
+  const currency=get('product:price:currency')||get('og:price:currency')||'USD';
+  return [{
+    title    :title.substring(0,200),
+    brand    :extractBrandFromTitle(title),
+    model    :extractModelFromTitle(title),
+    description:(desc||'').substring(0,600),
+    images   :img?[img]:[],
+    offers   :price>0?[{price,currency}]:[],
+    _sourceName:sourceName
+  }];
+}
+
 function autoSearchProduct(){
-  const q = (document.getElementById('lookup-q').value||'').trim();
+  const q=(document.getElementById('lookup-q').value||'').trim();
   if(!q){ showToast('Enter a product name or model first','error'); return; }
 
-  const btn = document.getElementById('lookup-search-btn');
+  const btn=document.getElementById('lookup-search-btn');
   if(btn){ btn.disabled=true; btn.textContent='⏳'; }
 
-  document.getElementById('lookup-body').innerHTML =
+  document.getElementById('lookup-body').innerHTML=
     '<div class="lookup-spinner">'+
       '<div style="font-size:28px;margin-bottom:8px">⏳</div>'+
       '<div>Searching product databases…</div>'+
-      '<div style="font-size:11px;color:var(--text3);margin-top:6px">Checking B&amp;H Photo · Newegg · DuckDuckGo · UPC ItemDB</div>'+
+      '<div style="font-size:11px;color:var(--text3);margin-top:6px">Checking B&amp;H Photo · CDW · Adorama · DuckDuckGo</div>'+
     '</div>';
 
   function showFallback(){
     if(btn){ btn.disabled=false; btn.textContent='🔎 Search'; }
-    const qEnc = encodeURIComponent(q);
-    document.getElementById('lookup-body').innerHTML =
+    const qEnc=encodeURIComponent(q);
+    document.getElementById('lookup-body').innerHTML=
       '<div class="lookup-none">'+
         '<div style="font-size:28px;margin-bottom:10px">😕</div>'+
         '<div style="font-size:13px;font-weight:600;margin-bottom:6px">No results found automatically</div>'+
-        '<div style="font-size:12px;color:var(--text2);margin-bottom:16px">Search manually, copy the info, then use <b>📋 Paste Text</b>.</div>'+
+        '<div style="font-size:12px;color:var(--text2);margin-bottom:16px">Product may not be in public databases. Search manually, then use <b>📋 Paste Text</b> to import the info.</div>'+
         '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'+
-          '<button class="btn btn-o btn-sm" onclick="window.open(\'https://www.google.com/search?q='+qEnc+' price specifications\',\'_blank\')">🔍 Google</button>'+
-          '<button class="btn btn-o btn-sm" onclick="window.open(\'https://www.bhphotovideo.com/c/search?q='+qEnc+'\',\'_blank\')">📷 B&amp;H Photo</button>'+
+          '<button class="btn btn-o btn-sm" onclick="window.open(\'https://www.google.com/search?q='+qEnc+'\',\'_blank\')">🔍 Google</button>'+
+          '<button class="btn btn-o btn-sm" onclick="window.open(\'https://www.newegg.com/p/pl?d='+qEnc+'\',\'_blank\')">🛒 Newegg</button>'+
           '<button class="btn btn-o btn-sm" onclick="window.open(\'https://www.amazon.ae/s?k='+qEnc+'\',\'_blank\')">📦 Amazon</button>'+
           '<button class="btn btn-p btn-sm" onclick="setLookupMode(\'text\')">📋 Paste Text</button>'+
         '</div>'+
       '</div>';
   }
 
-  let allResults = [];
-  let pending = 4;
+  let allResults=[], pending=4;
 
   function done(){
     if(btn){ btn.disabled=false; btn.textContent='🔎 Search'; }
-    const seen = [];
-    const deduped = allResults.filter(item=>{
-      const t = (item.title||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();
-      if(!t || t.length<3 || seen.some(s=>s===t||levenshtein(s,t)<=5)) return false;
+    const seen=[];
+    const deduped=allResults.filter(item=>{
+      const t=(item.title||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();
+      if(!t||t.length<3||seen.some(s=>s===t||levenshtein(s,t)<=3)) return false;
       seen.push(t); return true;
     });
     if(!deduped.length){ showFallback(); return; }
     renderLookupResults(deduped);
   }
 
-  const PROXY = 'https://corsproxy.io/?';
+  // ── Source 1: B&H Photo — pro-AV retailer, rich JSON-LD ──
+  fetchViaProxy('https://www.bhphotovideo.com/c/search?q='+encodeURIComponent(q)+'&sts=ma', 18000)
+    .then(html=>{ if(html) allResults=allResults.concat(parseHtmlJsonLd(html,'B&H Photo'), parseOpenGraph(html,'B&H Photo')); })
+    .catch(()=>{}).finally(()=>{ if(!--pending) done(); });
 
-  // ── Source 1: B&H Photo — best pro-AV retailer, rich JSON-LD ──
-  fetchTimed(PROXY+encodeURIComponent('https://www.bhphotovideo.com/c/search?q='+encodeURIComponent(q)+'&sts=ma'), 13000)
-    .then(r=>r.ok?r.text():'')
-    .then(html=>{ if(html) allResults=allResults.concat(parseHtmlJsonLd(html,'B&H Photo')); })
-    .catch(()=>{})
-    .finally(()=>{ if(!--pending) done(); });
+  // ── Source 2: CDW — B2B IT/networking, Ubiquiti/Hikvision distributor ──
+  fetchViaProxy('https://www.cdw.com/search/?key='+encodeURIComponent(q), 18000)
+    .then(html=>{ if(html) allResults=allResults.concat(parseHtmlJsonLd(html,'CDW'), parseOpenGraph(html,'CDW')); })
+    .catch(()=>{}).finally(()=>{ if(!--pending) done(); });
 
-  // ── Source 2: Newegg — JSON-LD + DOM parse ──
-  fetchTimed(PROXY+encodeURIComponent('https://www.newegg.com/p/pl?d='+encodeURIComponent(q)), 13000)
-    .then(r=>r.ok?r.text():'')
-    .then(html=>{
-      if(html){
-        allResults=allResults.concat(parseHtmlJsonLd(html,'Newegg'));
-        if(!allResults.some(r=>r._sourceName==='Newegg')) allResults=allResults.concat(parseNeweggHtml(html));
-      }
-    })
-    .catch(()=>{})
-    .finally(()=>{ if(!--pending) done(); });
+  // ── Source 3: Adorama — pro-AV retailer ──
+  fetchViaProxy('https://www.adorama.com/alc/search/?q='+encodeURIComponent(q), 18000)
+    .then(html=>{ if(html) allResults=allResults.concat(parseHtmlJsonLd(html,'Adorama'), parseOpenGraph(html,'Adorama')); })
+    .catch(()=>{}).finally(()=>{ if(!--pending) done(); });
 
-  // ── Source 3: DuckDuckGo — natively CORS-enabled ──
-  fetchTimed('https://api.duckduckgo.com/?q='+encodeURIComponent(q)+'&format=json&no_html=1&skip_disambig=1', 9000)
+  // ── Source 4: DuckDuckGo — no proxy needed, catches known products ──
+  fetchTimed('https://api.duckduckgo.com/?q='+encodeURIComponent(q+' specifications')+'&format=json&no_html=1&skip_disambig=1', 9000)
     .then(r=>r.ok?r.json():null)
     .then(data=>{ if(data) allResults=allResults.concat(parseDuckDuckGo(data,q)); })
-    .catch(()=>{})
-    .finally(()=>{ if(!--pending) done(); });
-
-  // ── Source 4: UPC ItemDB via proxy (CORS-blocked direct) ──
-  fetchTimed(PROXY+encodeURIComponent('https://api.upcitemdb.com/prod/trial/search?s='+encodeURIComponent(q)+'&type=product'), 10000)
-    .then(r=>r.ok?r.json():null)
-    .then(data=>{ if(data) allResults=allResults.concat(parseUpcItemDb(data)); })
-    .catch(()=>{})
-    .finally(()=>{ if(!--pending) done(); });
+    .catch(()=>{}).finally(()=>{ if(!--pending) done(); });
 }
 
 function parseUpcItemDb(data){

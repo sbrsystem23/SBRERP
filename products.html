@@ -440,13 +440,26 @@
 
     <!-- MODE TABS -->
     <div class="lookup-mode-tabs">
-      <button class="lookup-mode-btn active" id="lm-url" onclick="setLookupMode('url')">🔗 Paste URL</button>
+      <button class="lookup-mode-btn active" id="lm-auto" onclick="setLookupMode('auto')">🔎 Auto Search</button>
+      <button class="lookup-mode-btn" id="lm-url" onclick="setLookupMode('url')">🔗 Paste URL</button>
       <button class="lookup-mode-btn" id="lm-text" onclick="setLookupMode('text')">📋 Paste Text</button>
-      <button class="lookup-mode-btn" id="lm-web" onclick="setLookupMode('web')">🔍 Web Search</button>
+    </div>
+
+    <!-- PANEL: AUTO SEARCH -->
+    <div id="lm-auto-panel">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Type any product name or model number — system automatically searches product databases and retrieves info, price and image.</div>
+      <div style="display:flex;gap:8px">
+        <input class="fi" id="lookup-q" type="text" placeholder="e.g. UCG-Ultra, Hikvision DS-2CD2143, KNX 4-fold actuator, Cisco SG110…" style="flex:1"
+          onkeydown="if(event.key==='Enter')autoSearchProduct()">
+        <button class="btn btn-p" id="lookup-search-btn" onclick="autoSearchProduct()">🔎 Search</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">
+        💡 More specific = better results — try the model number (e.g. "UCG-Ultra", "DS-2CD2143G2-I", "SG110-16")
+      </div>
     </div>
 
     <!-- PANEL: PASTE URL -->
-    <div id="lm-url-panel">
+    <div id="lm-url-panel" style="display:none">
       <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Paste any product page URL — manufacturer, supplier, or distributor website. We'll extract the product details automatically.</div>
       <div style="display:flex;gap:8px">
         <input class="fi" id="lookup-url-input" type="url" placeholder="https://www.supplier.com/products/knx-switch-actuator" style="flex:1"
@@ -465,25 +478,11 @@
       </div>
     </div>
 
-    <!-- PANEL: WEB SEARCH -->
-    <div id="lm-web-panel" style="display:none">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Search for your product online, then copy the product text and use the <b>📋 Paste Text</b> tab to import it.</div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input class="fi" id="lookup-q" type="text" placeholder="e.g. KNX 4-fold switch actuator, Axis P3245-V, Cisco SG110…" style="flex:1"
-          onkeydown="if(event.key==='Enter')webSearchGoogle()">
-        <button class="btn btn-o" onclick="webSearchGoogle()">🔍 Google</button>
-        <button class="btn btn-o" onclick="webSearchAmazon()">📦 Amazon</button>
-      </div>
-      <div class="lookup-hint-box">
-        💡 <b>How to use:</b> Click Google or Amazon → find your product → copy the product name, model, price and description → come back and switch to <b>📋 Paste Text</b> tab → paste and click Extract Info
-      </div>
-    </div>
-
     <!-- RESULTS -->
     <div id="lookup-body" style="margin-top:16px">
       <div class="lookup-none" style="color:var(--text3)">
-        <div style="font-size:32px;margin-bottom:8px">🔗</div>
-        <div>Paste a product page URL above and click Fetch</div>
+        <div style="font-size:32px;margin-bottom:8px">🔎</div>
+        <div>Type a product name or model above and click Search</div>
       </div>
     </div>
 
@@ -1110,23 +1109,24 @@ document.querySelectorAll('.modal-tab').forEach((t,i)=>{
 });
 
 // ═══════════════════════════════════════════════════════════
-// ONLINE PRODUCT LOOKUP  v2 — URL Fetch · Paste Text · Web Search
+// ONLINE PRODUCT LOOKUP  v3 — Auto Search · URL Fetch · Paste Text
 // ═══════════════════════════════════════════════════════════
 
-let _lookupMode = 'url';
+let _lookupMode = 'auto';
 
 function openLookupModal(){
   const formOpen = document.getElementById('prod-modal').style.display === 'flex';
   const name  = formOpen ? document.getElementById('p-name').value.trim() : '';
   const model = formOpen ? document.getElementById('p-model').value.trim() : '';
   const q = model||name||'';
-  // Pre-fill web search field if product form is open
-  if(q) document.getElementById('lookup-q').value = q;
+  document.getElementById('lookup-q').value = q;
   document.getElementById('lookup-url-input').value = '';
   document.getElementById('lookup-text-input').value = '';
   document.getElementById('lookup-modal').style.display = 'flex';
-  setLookupMode('url');
-  setTimeout(()=>document.getElementById('lookup-url-input').focus(), 50);
+  setLookupMode('auto');
+  setTimeout(()=>document.getElementById('lookup-q').focus(), 50);
+  // Auto-trigger search if a product name is already in the form
+  if(q) setTimeout(()=>autoSearchProduct(), 300);
 }
 
 function closeLookupModal(){
@@ -1135,23 +1135,240 @@ function closeLookupModal(){
 
 function setLookupMode(mode){
   _lookupMode = mode;
-  ['url','text','web'].forEach(m=>{
+  ['auto','url','text'].forEach(m=>{
     document.getElementById('lm-'+m).classList.toggle('active', m===mode);
     document.getElementById('lm-'+m+'-panel').style.display = m===mode ? 'block' : 'none';
   });
   const hints = {
+    auto: '<div style="font-size:32px;margin-bottom:8px">🔎</div><div>Type a product name or model above and click Search</div>',
     url : '<div style="font-size:32px;margin-bottom:8px">🔗</div><div>Paste a product page URL above and click Fetch</div>',
-    text: '<div style="font-size:32px;margin-bottom:8px">📋</div><div>Paste product text above and click Extract Info</div>',
-    web : '<div style="font-size:32px;margin-bottom:8px">🔍</div><div>Search for your product, copy its details, then use the <b>📋 Paste Text</b> tab</div>'
+    text: '<div style="font-size:32px;margin-bottom:8px">📋</div><div>Paste product text above and click Extract Info</div>'
   };
   document.getElementById('lookup-body').innerHTML =
     '<div class="lookup-none" style="color:var(--text3)">'+hints[mode]+'</div>';
-  // Focus the right input
   setTimeout(()=>{
+    if(mode==='auto') document.getElementById('lookup-q').focus();
     if(mode==='url')  document.getElementById('lookup-url-input').focus();
     if(mode==='text') document.getElementById('lookup-text-input').focus();
-    if(mode==='web')  document.getElementById('lookup-q').focus();
   }, 50);
+}
+
+// ─────────────────────────────────────────
+// MODE 1: AUTO SEARCH — Newegg + DuckDuckGo
+// ─────────────────────────────────────────
+function autoSearchProduct(){
+  const q = (document.getElementById('lookup-q').value||'').trim();
+  if(!q){ showToast('Enter a product name or model first','error'); return; }
+
+  const btn = document.getElementById('lookup-search-btn');
+  if(btn){ btn.disabled=true; btn.textContent='⏳'; }
+
+  document.getElementById('lookup-body').innerHTML =
+    '<div class="lookup-spinner">'+
+      '<div style="font-size:28px;margin-bottom:8px">⏳</div>'+
+      '<div>Searching product databases…</div>'+
+      '<div style="font-size:11px;color:var(--text3);margin-top:6px">Checking Newegg, DuckDuckGo and more</div>'+
+    '</div>';
+
+  const PROXY = 'https://api.allorigins.win/get?url=';
+  let allResults = [];
+  let pending = 2;
+
+  function onBothDone(){
+    if(btn){ btn.disabled=false; btn.textContent='🔎 Search'; }
+    // Deduplicate by title similarity
+    const seen = [];
+    const deduped = allResults.filter(item=>{
+      const t = (item.title||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();
+      if(seen.some(s=>s===t||levenshtein(s,t)<=8)) return false;
+      seen.push(t); return true;
+    });
+    if(!deduped.length){
+      const qEnc = encodeURIComponent(q);
+      document.getElementById('lookup-body').innerHTML =
+        '<div class="lookup-none">'+
+          '<div style="font-size:28px;margin-bottom:10px">😕</div>'+
+          '<div style="font-size:13px;font-weight:600;margin-bottom:6px">No results found automatically</div>'+
+          '<div style="font-size:12px;color:var(--text2);margin-bottom:16px">The product may be too niche or the service was temporarily unavailable. Try searching manually, then paste the info here.</div>'+
+          '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'+
+            '<button class="btn btn-o btn-sm" onclick="window.open(\'https://www.google.com/search?q='+qEnc+' specifications price\',\'_blank\')">🔍 Google</button>'+
+            '<button class="btn btn-o btn-sm" onclick="window.open(\'https://www.newegg.com/p/pl?d='+qEnc+'\',\'_blank\')">🛒 Newegg</button>'+
+            '<button class="btn btn-o btn-sm" onclick="window.open(\'https://www.amazon.ae/s?k='+qEnc+'\',\'_blank\')">📦 Amazon</button>'+
+            '<button class="btn btn-p btn-sm" onclick="setLookupMode(\'text\')">📋 Paste Text</button>'+
+          '</div>'+
+        '</div>';
+      return;
+    }
+    renderLookupResults(deduped);
+  }
+
+  // ── Source 1: Newegg search ──
+  const neweggUrl = 'https://www.newegg.com/p/pl?d='+encodeURIComponent(q);
+  fetch(PROXY+encodeURIComponent(neweggUrl), {signal: AbortSignal.timeout ? AbortSignal.timeout(12000) : undefined})
+    .then(r=>r.ok ? r.json() : Promise.reject('newegg'))
+    .then(data=>{
+      const html = data.contents||'';
+      if(html && html.length > 200){
+        const parsed = parseNeweggHtml(html);
+        allResults = allResults.concat(parsed);
+      }
+    })
+    .catch(()=>{})
+    .finally(()=>{ pending--; if(!pending) onBothDone(); });
+
+  // ── Source 2: DuckDuckGo Instant Answer (via proxy for CORS safety) ──
+  const ddgUrl = 'https://api.duckduckgo.com/?q='+encodeURIComponent(q)+
+    '&format=json&no_html=1&skip_disambig=1&t=sbrsystem';
+  fetch(PROXY+encodeURIComponent(ddgUrl), {signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined})
+    .then(r=>r.ok ? r.json() : Promise.reject('ddg'))
+    .then(data=>{
+      // allorigins wraps JSON API responses in .contents as a string
+      let ddgData = data;
+      if(typeof data.contents === 'string'){
+        try{ ddgData = JSON.parse(data.contents); } catch(e){ return; }
+      }
+      const items = parseDuckDuckGo(ddgData, q);
+      allResults = allResults.concat(items);
+    })
+    .catch(()=>{})
+    .finally(()=>{ pending--; if(!pending) onBothDone(); });
+}
+
+function levenshtein(a, b){
+  if(!a) return b.length; if(!b) return a.length;
+  const m=a.length, n=b.length;
+  const dp=Array.from({length:m+1},(_,i)=>Array.from({length:n+1},(_,j)=>i?j?0:i:j));
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+    dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+function parseNeweggHtml(html){
+  const results = [];
+  try{
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const items = doc.querySelectorAll('.item-cell');
+    for(const item of Array.from(items).slice(0, 10)){
+      const titleEl = item.querySelector('.item-title');
+      const title   = titleEl ? titleEl.textContent.trim() : '';
+      if(!title || title.length < 5) continue;
+
+      // Price: Newegg format  $XXX .XX  (strong = integer part, sup = cents)
+      let price = 0;
+      const priceEl = item.querySelector('.price-current');
+      if(priceEl){
+        const strong = priceEl.querySelector('strong');
+        const sup    = priceEl.querySelector('sup');
+        const mainN  = strong ? strong.textContent.replace(/[^0-9]/g,'') : '';
+        const centsN = sup    ? sup.textContent.replace(/[^0-9]/g,'').substring(0,2).padEnd(2,'0') : '00';
+        if(mainN) price = parseFloat(mainN+'.'+centsN)||0;
+      }
+
+      // Image — lazy-loaded, check multiple attrs
+      let imgSrc = '';
+      const imgEl = item.querySelector('.item-img img') ||
+                    item.querySelector('a.item-img img') ||
+                    item.querySelector('img[class*="product"]');
+      if(imgEl){
+        imgSrc = imgEl.getAttribute('src')||
+                 imgEl.getAttribute('data-original')||
+                 imgEl.getAttribute('data-src')||'';
+        if(imgSrc && imgSrc.startsWith('//')) imgSrc = 'https:'+imgSrc;
+        // Discard placeholder blanks
+        if(imgSrc && (imgSrc.includes('blank.gif')||imgSrc.includes('lazy_placeholder'))){
+          imgSrc = imgEl.getAttribute('data-original')||imgEl.getAttribute('data-src')||'';
+          if(imgSrc && imgSrc.startsWith('//')) imgSrc = 'https:'+imgSrc;
+        }
+      }
+
+      // Product link
+      const linkEl = item.querySelector('a.item-title')||item.querySelector('.item-info a');
+      let link = linkEl ? (linkEl.getAttribute('href')||'') : '';
+      if(link && !link.startsWith('http')) link = 'https://www.newegg.com'+link;
+
+      results.push({
+        title      : title.substring(0,200),
+        brand      : extractBrandFromTitle(title),
+        model      : extractModelFromTitle(title),
+        description: '',
+        images     : imgSrc ? [imgSrc] : [],
+        offers     : price ? [{price, currency:'USD'}] : [],
+        _source    : link||'https://www.newegg.com',
+        _sourceName: 'Newegg'
+      });
+    }
+  } catch(e){}
+  return results;
+}
+
+function parseDuckDuckGo(data, q){
+  const results = [];
+  if(!data) return results;
+  // Main abstract
+  if(data.Heading && (data.AbstractText||data.Abstract)){
+    const rawImg = data.Image||'';
+    const imgUrl = rawImg ? (rawImg.startsWith('http') ? rawImg : 'https://duckduckgo.com'+rawImg) : '';
+    results.push({
+      title      : (data.Heading||q).substring(0,200),
+      brand      : extractBrandFromTitle(data.Heading||q),
+      model      : extractModelFromTitle(data.Heading||q) || extractModelFromTitle(q),
+      description: (data.AbstractText||data.Abstract||'').substring(0,800),
+      images     : imgUrl ? [imgUrl] : [],
+      offers     : [],
+      _source    : data.AbstractURL||'',
+      _sourceName: 'DuckDuckGo'
+    });
+  }
+  // Related topics (max 3)
+  for(const topic of (data.RelatedTopics||[]).slice(0,3)){
+    if(!topic.Text || topic.Text.length < 20) continue;
+    const ttl = (topic.Text.split(' - ')[0]||topic.Text).substring(0,200);
+    const tImg = topic.Icon && topic.Icon.URL && topic.Icon.URL.length > 3
+      ? (topic.Icon.URL.startsWith('http') ? topic.Icon.URL : 'https://duckduckgo.com'+topic.Icon.URL) : '';
+    results.push({
+      title      : ttl,
+      brand      : extractBrandFromTitle(ttl),
+      model      : extractModelFromTitle(ttl),
+      description: topic.Text.substring(0,600),
+      images     : tImg ? [tImg] : [],
+      offers     : [],
+      _source    : topic.FirstURL||'',
+      _sourceName: 'DuckDuckGo'
+    });
+  }
+  return results;
+}
+
+function extractBrandFromTitle(title){
+  if(!title) return '';
+  const known = [
+    'Ubiquiti','UniFi','Axis','Hikvision','Dahua','Cisco','Netgear','TP-Link','Tenda',
+    'Siemens','ABB','Schneider','Bosch','Sony','Samsung','LG','Panasonic','Legrand',
+    'Vimar','HDL','Extron','Crestron','AMX','Control4','Lutron','Philips','Honeywell',
+    'Hanwha','Uniview','Mikrotik','MikroTik','Juniper','Aruba','Ruckus','Fortinet',
+    'ASUS','Intel','EVGA','MSI','Gigabyte','Corsair','Seagate','Synology','QNAP',
+    'Sennheiser','Shure','QSC','Crown','JBL','Yamaha','Denon','Marantz','Bose','Sonos',
+    'Avigilon','Genetec','Milestone','Grandstream','Yealink','Poly','Jabra','Logitech',
+    'Eaton','APC','Rittal','Patchbox','Leviton','Panduit','Belden','CommScope'
+  ];
+  for(const b of known){
+    if(title.toLowerCase().includes(b.toLowerCase())) return b;
+  }
+  const first = (title.split(/[\s\-–(]/)[0]||'').trim();
+  if(first.length >= 3 && /^[A-Z]/.test(first) && !/^\d/.test(first) && !/^(The|A|An|For|With|Best|New|Used|Like)$/i.test(first)){
+    return first;
+  }
+  return '';
+}
+
+function extractModelFromTitle(title){
+  if(!title) return '';
+  // Patterns like: UCG-Ultra, DS-2CD2143G2, SG110-16, KNX-2304-A, P3245-V, NVR5416
+  const m = title.match(/\b([A-Z]{1,6}[-][A-Z0-9]{2,12}(?:[-][A-Z0-9]{1,12}){0,3})\b/)||
+            title.match(/\b([A-Z]{2,6}\d{3,8}[A-Z0-9\-]*)\b/)||
+            title.match(/\b(\d{3,6}[A-Z]{1,4}\d*)\b/);
+  return m ? m[1] : '';
 }
 
 // ─────────────────────────────────────────
@@ -1333,20 +1550,6 @@ function parsePastedText(){
 }
 
 // ─────────────────────────────────────────
-// MODE 3: WEB SEARCH — opens browser tab
-// ─────────────────────────────────────────
-function webSearchGoogle(){
-  const q = document.getElementById('lookup-q').value.trim();
-  if(!q){ showToast('Enter a product name or model first','error'); return; }
-  window.open('https://www.google.com/search?q='+encodeURIComponent(q+' specifications price datasheet site:manufacturer OR site:supplier'),'_blank');
-}
-function webSearchAmazon(){
-  const q = document.getElementById('lookup-q').value.trim();
-  if(!q){ showToast('Enter a product name or model first','error'); return; }
-  window.open('https://www.amazon.ae/s?k='+encodeURIComponent(q),'_blank');
-}
-
-// ─────────────────────────────────────────
 // RENDER RESULTS — shared by all modes
 // ─────────────────────────────────────────
 function renderLookupResults(items){
@@ -1385,6 +1588,7 @@ function renderLookupResults(items){
             (item.description?'<div class="lookup-card-desc">'+escH(item.description.substring(0,120))+'</div>':'')+
             (price?'<div style="margin-top:4px;font-size:11px;font-weight:700;color:var(--green)">'+escH(cur)+' '+fmt(price,2)+'</div>':
                    '<div style="margin-top:4px;font-size:10px;color:var(--text3)">Price not found — enter manually</div>')+
+            (item._sourceName?'<div style="font-size:9px;color:var(--text3);margin-top:4px;background:#f0f4f8;padding:2px 6px;border-radius:3px;display:inline-block">📌 '+escH(item._sourceName)+'</div>':'')+
             src+
           '</div>'+
           '<div style="padding:8px 10px;border-top:1px solid var(--border);display:flex;gap:6px">'+

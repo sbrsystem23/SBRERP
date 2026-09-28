@@ -686,8 +686,10 @@ function editProd(id){
   // Pricing
   document.getElementById('p-cost').value = p.cost||'';
   document.getElementById('p-currency').value = p.currency||'AED';
-  const exrate = p.currency==='USD'?3.67:p.currency==='EUR'?4.1:p.currency==='GBP'?4.8:1;
+  const _rates = {AED:1, USD:3.67, EUR:4.1, GBP:4.8, CNY:0.51};
+  const exrate = _rates[p.currency||'AED'] || 1;
   document.getElementById('p-exrate').value = exrate;
+  document.getElementById('p-exrate').disabled = (p.currency||'AED')==='AED';
   document.getElementById('p-mk').value = p.mk||'';
   document.getElementById('p-sell').value = p.sell||'';
   document.getElementById('p-vat').value = String(p.vat||'5');
@@ -716,7 +718,7 @@ function clearModalFields(){
   });
   document.getElementById('p-cat').value='';
   document.getElementById('p-currency').value='AED';
-  document.getElementById('p-exrate').value='3.67';
+  onCurrencyChange(); // sets exrate=1 and disables field for AED
   document.getElementById('p-mk').value='50';
   document.getElementById('p-vat').value='5';
   document.getElementById('p-maxdisc').value='10';
@@ -787,6 +789,21 @@ function updateCalcBox(costAed, extras, base, mk, sell){
 
 function syncSupName(){
   // If first supplier row name is empty, mirror product name
+}
+
+// ── SUBCATEGORY AUTOCOMPLETE ──
+function updateSubcats(){
+  const cat = document.getElementById('p-cat').value;
+  const prods = (SBR.productDB||[]).filter(p=>p.cat===cat && p.subcat);
+  const subcats = [...new Set(prods.map(p=>p.subcat))].sort();
+  let dl = document.getElementById('p-subcat-list');
+  if(!dl){
+    dl = document.createElement('datalist');
+    dl.id = 'p-subcat-list';
+    document.body.appendChild(dl);
+    document.getElementById('p-subcat').setAttribute('list','p-subcat-list');
+  }
+  dl.innerHTML = subcats.map(s=>`<option value="${escH(s)}">`).join('');
 }
 
 // ── SUPPLIER ROWS ──
@@ -1142,21 +1159,25 @@ function renderLookupResults(items){
   }
 
   body.innerHTML =
-    '<div style="font-size:11px;color:var(--text2);margin-bottom:10px">Found '+items.length+' results — click any card to auto-fill the product form</div>'+
+    '<div style="font-size:11px;color:var(--text2);margin-bottom:10px">Found '+items.length+' results — <b>📥 Save to DB</b> adds it directly, or click card to fill form first</div>'+
     '<div class="lookup-results">'+
       items.map((item,idx)=>{
         const img = (item.images||[])[0]||'';
         const price = ((item.offers||[])[0]||{}).price||0;
         const cur   = ((item.offers||[])[0]||{}).currency||'USD';
-        return '<div class="lookup-card" onclick="applyLookupResult('+idx+')">'+
-          '<div class="lookup-card-img">'+
+        return '<div class="lookup-card">'+
+          '<div class="lookup-card-img" onclick="applyLookupResult('+idx+')" style="cursor:pointer">'+
             (img ? '<img src="'+escH(img)+'" onerror="this.parentNode.innerHTML=\'📦\'">' : '<span style="font-size:32px">📦</span>')+
           '</div>'+
-          '<div class="lookup-card-body">'+
+          '<div class="lookup-card-body" onclick="applyLookupResult('+idx+')" style="cursor:pointer">'+
             '<div class="lookup-card-brand">'+escH(item.brand||'—')+'</div>'+
             '<div class="lookup-card-title">'+escH(item.title||'')+'</div>'+
-            (item.description?'<div class="lookup-card-desc">'+escH(item.description.substring(0,120))+'…</div>':'')+
-            (price?'<div style="margin-top:6px;font-size:11px;font-weight:700;color:var(--green)">'+cur+' '+fmt(price,2)+'</div>':'')+
+            (item.description?'<div class="lookup-card-desc">'+escH(item.description.substring(0,100))+'…</div>':'')+
+            (price?'<div style="margin-top:4px;font-size:11px;font-weight:700;color:var(--green)">'+escH(cur)+' '+fmt(price,2)+'</div>':'')+
+          '</div>'+
+          '<div style="padding:8px 10px;border-top:1px solid var(--border);display:flex;gap:6px">'+
+            '<button class="btn btn-o btn-xs" style="flex:1" onclick="applyLookupResult('+idx+')" title="Fill form to review before saving">✏️ Fill Form</button>'+
+            '<button class="btn btn-g btn-xs" style="flex:1" id="add-db-btn-'+idx+'" onclick="addLookupToDB('+idx+')" title="Save directly to database">📥 Save to DB</button>'+
           '</div>'+
         '</div>';
       }).join('')+

@@ -1486,114 +1486,122 @@ function extractModelFromTitle(title){
 // MODE 1: PASTE URL — fetch via CORS proxy, parse JSON-LD + OG tags
 // ─────────────────────────────────────────
 function fetchFromUrl(){
-  const url = document.getElementById('lookup-url-input').value.trim();
+  const url = (document.getElementById('lookup-url-input').value||'').trim();
   if(!url){ showToast('Paste a product URL first','error'); return; }
   if(!url.startsWith('http')){ showToast('URL must start with http:// or https://','error'); return; }
 
-  document.getElementById('lookup-body').innerHTML =
-    '<div class="lookup-spinner"><div style="font-size:28px;margin-bottom:8px">⏳</div>'+
-    '<div>Fetching product page…</div><div style="font-size:11px;color:var(--text3);margin-top:6px">This may take a few seconds</div></div>';
+  const btn = document.getElementById('lookup-url-btn');
+  if(btn){ btn.disabled=true; btn.textContent='⏳'; }
 
-  const proxy = 'https://api.allorigins.win/get?url='+encodeURIComponent(url);
-  fetch(proxy)
-    .then(r=>{ if(!r.ok) throw new Error('proxy error'); return r.json(); })
-    .then(data=>{
-      const html = data.contents||'';
-      if(!html){ throw new Error('empty response'); }
+  document.getElementById('lookup-body').innerHTML=
+    '<div class="lookup-spinner"><div style="font-size:28px;margin-bottom:8px">⏳</div>'+
+    '<div>Fetching product page…</div>'+
+    '<div style="font-size:11px;color:var(--text3);margin-top:6px">Trying multiple proxies — up to 20 seconds</div></div>';
+
+  fetchViaProxy(url, 20000)
+    .then(html=>{
+      if(btn){ btn.disabled=false; btn.textContent='Fetch'; }
+      if(!html || html.length < 200){ throw new Error('empty'); }
       const product = extractFromHtml(html, url);
       if(product && product.title && product.title.length > 3){
-        window._lookupItems = [product];
         renderLookupResults([product]);
       } else {
-        document.getElementById('lookup-body').innerHTML =
+        document.getElementById('lookup-body').innerHTML=
           '<div class="lookup-none">'+
             '<div style="font-size:28px;margin-bottom:10px">😕</div>'+
-            '<div style="font-size:13px;font-weight:600;margin-bottom:6px">Could not extract product info from this page</div>'+
-            '<div style="font-size:12px;color:var(--text2);margin-bottom:16px">The page may not have structured product data. '+
-            'Try copying the product text and using the <b>📋 Paste Text</b> tab instead.</div>'+
-            '<button class="btn btn-o" onclick="setLookupMode(\'text\')">📋 Switch to Paste Text</button>'+
+            '<div style="font-size:13px;font-weight:600;margin-bottom:6px">Page loaded but no product data found</div>'+
+            '<div style="font-size:12px;color:var(--text2);margin-bottom:16px">This site loads product info via JavaScript after the page opens — the proxy only gets the empty shell.<br><br>Open the page in your browser, <b>copy all the product text</b>, then paste it in the tab below.</div>'+
+            '<button class="btn btn-p" onclick="setLookupMode(\'text\')">📋 Use Paste Text instead</button>'+
           '</div>';
       }
     })
     .catch(()=>{
-      document.getElementById('lookup-body').innerHTML =
+      if(btn){ btn.disabled=false; btn.textContent='Fetch'; }
+      document.getElementById('lookup-body').innerHTML=
         '<div class="lookup-none">'+
           '<div style="font-size:28px;margin-bottom:10px">⚠️</div>'+
-          '<div style="font-size:13px;font-weight:600;margin-bottom:6px">Could not reach this URL</div>'+
-          '<div style="font-size:12px;color:var(--text2);margin-bottom:16px">The site may block external requests. '+
-          'Open the page in your browser, copy the product details, then paste in the <b>📋 Paste Text</b> tab.</div>'+
-          '<button class="btn btn-o" onclick="setLookupMode(\'text\')">📋 Switch to Paste Text</button>'+
+          '<div style="font-size:13px;font-weight:600;margin-bottom:6px">Could not reach this page</div>'+
+          '<div style="font-size:12px;color:var(--text2);margin-bottom:16px">The site blocks all proxy access (Amazon, Noon, etc. do this).<br><br>Open the product page in your browser, <b>copy the product details</b>, then paste below.</div>'+
+          '<button class="btn btn-p" onclick="setLookupMode(\'text\')">📋 Use Paste Text instead</button>'+
         '</div>';
     });
 }
 
 function extractFromHtml(html, sourceUrl){
-  // ── 1. Try JSON-LD Product schema ──
-  const ldRe = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  // ── helpers ──
+  function isProduct(type){ const t=[].concat(type||[]); return t.some(x=>String(x).toLowerCase().includes('product')); }
+  function bestImg(raw){ const a=[].concat(raw||[]); const u=a[0]; return typeof u==='string'?u:(u&&u.url?u.url:''); }
+  function bestPrice(offers){
+    const arr=[].concat(offers||[]);
+    const o=arr.find(x=>x.price)||arr[0]||{};
+    return { price:parseFloat(String(o.price||'').replace(/[^0-9.]/g,''))||0, currency:o.priceCurrency||'USD' };
+  }
+  function cleanDesc(s){ return (s||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().substring(0,800); }
+
+  // ── 1. JSON-LD — try every block, walk @graph ──
+  const ldRe=/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   let m;
-  while((m = ldRe.exec(html)) !== null){
+  while((m=ldRe.exec(html))!==null){
     try{
-      const json = JSON.parse(m[1]);
-      const candidates = Array.isArray(json) ? json : [json];
-      for(const root of candidates){
-        // Support @graph arrays
-        const nodes = root['@graph'] ? [root, ...root['@graph']] : [root];
+      const roots=[].concat(JSON.parse(m[1]));
+      for(const root of roots){
+        const nodes=[root,...(root['@graph']||[])];
         for(const node of nodes){
-          if(node['@type'] !== 'Product' && node['@type'] !== 'product') continue;
-          const rawOffer = node.offers || {};
-          const offerArr = Array.isArray(rawOffer) ? rawOffer : [rawOffer];
-          const offer = offerArr[0]||{};
-          const rawImg = node.image||'';
-          const imgArr = Array.isArray(rawImg) ? rawImg : [rawImg];
-          const imgUrl = typeof imgArr[0]==='string' ? imgArr[0] : ((imgArr[0]||{}).url||'');
+          if(!isProduct(node['@type'])) continue;
+          const {price,currency}=bestPrice(node.offers);
+          const imgUrl=bestImg(node.image);
+          const brand=typeof node.brand==='string'?node.brand:((node.brand||{}).name||'');
           return {
-            title      : (node.name||'').substring(0,200),
-            brand      : (typeof node.brand==='string' ? node.brand : ((node.brand||{}).name||'')).substring(0,100),
-            model      : (node.model||node.mpn||node.sku||'').substring(0,100),
-            description: (node.description||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().substring(0,800),
-            images     : imgUrl ? [imgUrl] : [],
-            offers     : offer.price ? [{price:parseFloat(String(offer.price).replace(/[^0-9.]/g,''))||0, currency:offer.priceCurrency||'USD'}] : [],
-            _source    : sourceUrl
+            title      :(node.name||'').substring(0,200),
+            brand      :brand.substring(0,100),
+            model      :(node.model||node.mpn||node.sku||'').substring(0,100),
+            description:cleanDesc(node.description),
+            images     :imgUrl?[imgUrl]:[],
+            offers     :price>0?[{price,currency}]:[],
+            _source    :sourceUrl
           };
         }
       }
-    } catch(e){ /* invalid JSON */ }
+    }catch(e){}
   }
 
-  // ── 2. Fallback: OG / meta tags ──
-  function getMeta(prop, attr){
-    attr = attr||'property';
-    const r1 = new RegExp('<meta[^>]+'+attr+'=["\']'+prop+'["\'][^>]+content=["\']([^"\']*)["\']','i');
-    const r2 = new RegExp('<meta[^>]+content=["\']([^"\']*)["\'][^>]+'+attr+'=["\']'+prop+'["\']','i');
-    const hit = html.match(r1) || html.match(r2);
-    return hit ? hit[1].trim() : '';
+  // ── 2. Open Graph / meta tags ──
+  function getMeta(prop,attr){
+    attr=attr||'property';
+    const r1=new RegExp('<meta[^>]+'+attr+'=["\']'+prop+'["\'][^>]+content=["\']([^"\']*)["\']','i');
+    const r2=new RegExp('<meta[^>]+content=["\']([^"\']*)["\'][^>]+'+attr+'=["\']'+prop+'["\']','i');
+    const hit=html.match(r1)||html.match(r2);
+    return hit?hit[1].trim():'';
   }
-  const ogTitle = getMeta('og:title') || getMeta('title','name');
-  const ogDesc  = getMeta('og:description') || getMeta('description','name');
-  const ogImg   = getMeta('og:image');
-  const titleTag = (html.match(/<title[^>]*>([^<]{3,})<\/title>/i)||[])[1]||'';
-  const name = ogTitle || titleTag || '';
+  const ogTitle=getMeta('og:title')||getMeta('title','name');
+  const ogDesc =getMeta('og:description')||getMeta('description','name');
+  const ogImg  =getMeta('og:image');
+  const ogPrice=getMeta('product:price:amount')||getMeta('og:price:amount');
+  const ogCur  =getMeta('product:price:currency')||getMeta('og:price:currency')||'USD';
+  const titleTag=(html.match(/<title[^>]*>([^<]{3,200})<\/title>/i)||[])[1]||'';
+  const name=ogTitle||titleTag||'';
 
-  if(name.length > 3){
-    // Try to sniff a price from page text
-    const stripped = html.replace(/<[^>]*>/g,' ');
-    const priceM = stripped.match(/(?:AED|USD|EUR|GBP|د\.إ)\s*([\d,]+(?:\.\d{1,2})?)/i) ||
-                   stripped.match(/([\d,]+(?:\.\d{2}))\s*(?:AED|USD|EUR|GBP)/i);
-    let price=0, cur='USD';
-    if(priceM){
-      price = parseFloat((priceM[1]||priceM[0]).replace(/[^0-9.]/g,''))||0;
-      const raw = priceM[0].replace(/[\d,.\s]/g,'').trim().toUpperCase();
-      const symMap={AED:'AED',USD:'USD',EUR:'EUR',GBP:'GBP','Dٍ.':'AED'};
-      cur = symMap[raw] || 'USD';
+  if(name.length>3){
+    let price=parseFloat(ogPrice)||0, cur=ogCur;
+    if(!price){
+      // Sniff price from stripped text — AED / USD / numbers with decimals
+      const stripped=html.replace(/<[^>]*>/g,' ');
+      const pm=stripped.match(/(?:AED|USD|EUR|GBP)\s*([0-9][0-9,]*(?:\.[0-9]{1,2})?)/i)
+              ||stripped.match(/([0-9][0-9,]*\.[0-9]{2})\s*(?:AED|USD|EUR|GBP)/i);
+      if(pm){
+        price=parseFloat((pm[1]||pm[0]).replace(/[^0-9.]/g,''))||0;
+        const sym=(pm[0]||'').replace(/[\d,.\s]/g,'').trim().toUpperCase();
+        cur={AED:'AED',USD:'USD',EUR:'EUR',GBP:'GBP'}[sym]||'USD';
+      }
     }
     return {
-      title      : name.substring(0,200),
-      brand      : '',
-      model      : '',
-      description: ogDesc.substring(0,800),
-      images     : ogImg ? [ogImg] : [],
-      offers     : price ? [{price,currency:cur}] : [],
-      _source    : sourceUrl
+      title      :name.substring(0,200),
+      brand      :extractBrandFromTitle(name),
+      model      :extractModelFromTitle(name),
+      description:ogDesc.substring(0,800),
+      images     :ogImg?[ogImg]:[],
+      offers     :price>0?[{price,currency:cur}]:[],
+      _source    :sourceUrl
     };
   }
   return null;

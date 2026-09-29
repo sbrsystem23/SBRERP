@@ -1250,6 +1250,14 @@ function parseOpenGraph(html, sourceName){
 function autoSearchProduct(){
   const q=(document.getElementById('lookup-q').value||'').trim();
   if(!q){ showToast('Enter a product name or model first','error'); return; }
+  // If user pasted a URL, redirect to URL fetch mode automatically
+  if(q.startsWith('http://') || q.startsWith('https://')){
+    document.getElementById('lookup-url-input').value = q;
+    document.getElementById('lookup-q').value = '';
+    setLookupMode('url');
+    fetchFromUrl();
+    return;
+  }
 
   const btn=document.getElementById('lookup-search-btn');
   if(btn){ btn.disabled=true; btn.textContent='⏳'; }

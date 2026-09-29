@@ -118,6 +118,21 @@
 .lookup-mode-btn.active{background:var(--blue);color:#fff}
 .lookup-mode-btn:hover:not(.active){background:#f0f6ff;color:var(--blue)}
 .lookup-hint-box{background:var(--blue-lt);border:1px solid #c7ddf5;border-radius:8px;padding:12px;font-size:12px;color:var(--text2);line-height:1.5}
+
+/* ── MANAGE CATEGORIES / BRANDS MODAL ── */
+.mgr-list{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;padding:2px}
+.mgr-item{display:flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:9px 12px}
+.mgr-item-name{flex:1;font-size:13px;font-weight:600;color:var(--text)}
+.mgr-item-meta{font-size:11px;color:var(--text3)}
+.mgr-item-actions{display:flex;gap:6px}
+.mgr-add-row{display:flex;gap:8px;margin-top:12px}
+.mgr-add-row .fi{flex:1}
+.mgr-tabs{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px}
+.mgr-tab{flex:1;padding:9px;border:none;background:#fff;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;border-right:1px solid var(--border);transition:all .12s}
+.mgr-tab:last-child{border-right:none}
+.mgr-tab.active{background:var(--blue);color:#fff}
+.mgr-panel{display:none}.mgr-panel.active{display:block}
+.mgr-empty{text-align:center;padding:30px 20px;color:var(--text3);font-size:13px}
 </style>
 </head>
 <body>
@@ -154,6 +169,7 @@
       <div class="page-sub">Manage product catalogue, pricing &amp; supplier info</div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-o" onclick="openManageMgr()" title="Manage categories and brands">⚙️ Categories &amp; Brands</button>
       <button class="btn btn-o" onclick="openLookupModal()">🌐 Fetch Online</button>
       <button class="btn btn-p" onclick="openAddModal()">＋ Add Product</button>
     </div>
@@ -266,68 +282,12 @@
           <input class="fi" id="p-model" type="text" placeholder="e.g. SBR-0003-8A">
         </div>
         <div class="field">
-          <label class="flbl">Brand <span style="font-weight:400;color:var(--text3)">(pick or type new)</span></label>
-          <input class="fi" id="p-brand" type="text" list="p-brand-list" placeholder="e.g. Ubiquiti, Hikvision, Lutron…" autocomplete="off">
-          <datalist id="p-brand-list">
-            <option>Ubiquiti</option>
-            <option>Hikvision</option>
-            <option>Lutron</option>
-            <option>Control4</option>
-            <option>Crestron</option>
-            <option>Siemens</option>
-            <option>ABB</option>
-            <option>Schneider Electric</option>
-            <option>Hager</option>
-            <option>Gira</option>
-            <option>MDT</option>
-            <option>Jung</option>
-            <option>Busch-Jaeger</option>
-            <option>Legrand</option>
-            <option>QSC</option>
-            <option>Sony</option>
-            <option>Samsung</option>
-            <option>LG</option>
-            <option>Axis</option>
-            <option>Dahua</option>
-            <option>Bosch</option>
-            <option>Cisco</option>
-            <option>TP-Link</option>
-            <option>Mikrotik</option>
-            <option>Bose</option>
-            <option>Denon</option>
-            <option>Extron</option>
-            <option>Kramer</option>
-            <option>AMX</option>
-            <option>Savant</option>
-            <option>Rako</option>
-            <option>Helvar</option>
-            <option>Zennio</option>
-            <option>Theben</option>
-            <option>Weinzierl</option>
-            <option>SATION</option>
-          </datalist>
+          <label class="flbl">Brand</label>
+          <select class="fi" id="p-brand"><option value="">— Select Brand —</option></select>
         </div>
         <div class="field">
-          <label class="flbl">Category <span style="font-weight:400;color:var(--text3)">(pick or type new)</span></label>
-          <input class="fi" id="p-cat" list="p-cat-list" placeholder="e.g. KNX Automation, CCTV, Networking…" oninput="updateSubcats()" autocomplete="off">
-          <datalist id="p-cat-list">
-            <option>KNX Automation</option>
-            <option>CCTV</option>
-            <option>Networking</option>
-            <option>Audio / Visual</option>
-            <option>AV</option>
-            <option>Intercom</option>
-            <option>Access Control</option>
-            <option>Automation</option>
-            <option>Dali Driver</option>
-            <option>Cables</option>
-            <option>Wireless Thermostat</option>
-            <option>Lighting Control</option>
-            <option>Sensors</option>
-            <option>Displays</option>
-            <option>Ring</option>
-            <option>General</option>
-          </datalist>
+          <label class="flbl">Category / System</label>
+          <select class="fi" id="p-cat" onchange="updateSubcats()"><option value="">— Select Category —</option></select>
         </div>
         <div class="field">
           <label class="flbl">Sub-category</label>
@@ -533,6 +493,45 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════ -->
+<!-- MANAGE CATEGORIES & BRANDS MODAL -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="modal-bg" id="mgr-modal" style="display:none" onclick="if(event.target===this)closeMgr()">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-hdr">
+      <div class="modal-title">⚙️ Manage Categories &amp; Brands</div>
+      <button class="modal-close" onclick="closeMgr()">×</button>
+    </div>
+
+    <div class="mgr-tabs">
+      <button class="mgr-tab active" id="mgr-tab-cat" onclick="switchMgrTab('cat')">🏷️ Categories</button>
+      <button class="mgr-tab" id="mgr-tab-brand" onclick="switchMgrTab('brand')">🔖 Brands</button>
+    </div>
+
+    <!-- CATEGORIES PANEL -->
+    <div class="mgr-panel active" id="mgr-panel-cat">
+      <div class="mgr-list" id="mgr-cat-list"></div>
+      <div class="mgr-add-row">
+        <input class="fi" id="mgr-cat-input" type="text" placeholder="New category name…" onkeydown="if(event.key==='Enter')addMgrCat()">
+        <button class="btn btn-p btn-sm" onclick="addMgrCat()">＋ Add</button>
+      </div>
+    </div>
+
+    <!-- BRANDS PANEL -->
+    <div class="mgr-panel" id="mgr-panel-brand">
+      <div class="mgr-list" id="mgr-brand-list"></div>
+      <div class="mgr-add-row">
+        <input class="fi" id="mgr-brand-input" type="text" placeholder="New brand name…" onkeydown="if(event.key==='Enter')addMgrBrand()">
+        <button class="btn btn-p btn-sm" onclick="addMgrBrand()">＋ Add</button>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-p" onclick="closeMgr()">✓ Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- DELETE CONFIRM -->
 <div class="modal-bg" id="del-modal" style="display:none" onclick="if(event.target===this)closeDelModal()">
   <div class="modal" style="max-width:400px;text-align:center;padding:32px 24px">
@@ -570,35 +569,222 @@ function onDataReady(){
   updateKPIs();
 }
 
-// ── UPDATE DATALISTS & BRAND FILTER from existing products ──
+// ── DEFAULT SEED LISTS (used only if nothing saved yet) ──
+const DEFAULT_CATS = ['KNX Automation','CCTV','Networking','Audio / Visual','Intercom',
+  'Access Control','Automation','Dali Driver','Cables','Wireless Thermostat',
+  'Lighting Control','Sensors','Displays','General'];
+const DEFAULT_BRANDS = ['ABB','AMX','Axis','Bosch','Bose','Busch-Jaeger','Cisco','Control4',
+  'Crestron','Dahua','Denon','Extron','Gira','Hager','Helvar','Hikvision','Jung','Kramer',
+  'Legrand','LG','Lutron','MDT','Mikrotik','QSC','Rako','SATION','Samsung','Savant',
+  'Schneider Electric','Siemens','Sony','Theben','TP-Link','Ubiquiti','Weinzierl','Zennio'];
+
+// ── GET / SAVE CATEGORY & BRAND LISTS ──
+function getCatList(){
+  if(!SBR.categories || SBR.categories.length===0){
+    SBR.categories = DEFAULT_CATS.map((n,i)=>({id:i+1,name:n}));
+    saveAllData();
+  }
+  return SBR.categories;
+}
+function getBrandList(){
+  if(!SBR.brands || SBR.brands.length===0){
+    SBR.brands = DEFAULT_BRANDS.map((n,i)=>({id:i+1,name:n}));
+    saveAllData();
+  }
+  return SBR.brands;
+}
+
+// ── UPDATE DROPDOWNS (product form + filter bar) ──
 function updateDataLists(){
-  const prods = SBR.productDB||[];
+  const cats   = getCatList();
+  const brands = getBrandList();
+  const prods  = SBR.productDB||[];
 
-  // 1. Category datalist — merge defaults + user categories from saved products
-  const defaultCats = ['KNX Automation','CCTV','Networking','Audio / Visual','AV','Intercom',
-    'Access Control','Automation','Dali Driver','Cables','Wireless Thermostat',
-    'Lighting Control','Sensors','Displays','Ring','General'];
-  const allCats = [...new Set([...defaultCats, ...prods.map(p=>p.cat||'').filter(Boolean)])].sort();
-  const catDl = document.getElementById('p-cat-list');
-  if(catDl) catDl.innerHTML = allCats.map(c=>`<option value="${escH(c)}">`).join('');
+  // Product form — Category select
+  const catSel = document.getElementById('p-cat');
+  if(catSel){
+    const cur = catSel.value;
+    catSel.innerHTML = '<option value="">— Select Category —</option>'+
+      cats.map(c=>`<option value="${escH(c.name)}"${c.name===cur?' selected':''}>${escH(c.name)}</option>`).join('');
+  }
 
-  // 2. Brand datalist — merge defaults + user brands from saved products
-  const defaultBrands = ['Ubiquiti','Hikvision','Lutron','Control4','Crestron','Siemens','ABB',
-    'Schneider Electric','Hager','Gira','MDT','Jung','Busch-Jaeger','Legrand','QSC','Sony',
-    'Samsung','LG','Axis','Dahua','Bosch','Cisco','TP-Link','Mikrotik','Bose','Denon',
-    'Extron','Kramer','AMX','Savant','Rako','Helvar','Zennio','Theben','Weinzierl','SATION'];
-  const allBrands = [...new Set([...defaultBrands, ...prods.map(p=>p.brand||'').filter(Boolean)])].sort();
-  const brandDl = document.getElementById('p-brand-list');
-  if(brandDl) brandDl.innerHTML = allBrands.map(b=>`<option value="${escH(b)}">`).join('');
+  // Product form — Brand select
+  const brandSel2 = document.getElementById('p-brand');
+  if(brandSel2){
+    const cur = brandSel2.value;
+    brandSel2.innerHTML = '<option value="">— Select Brand —</option>'+
+      brands.map(b=>`<option value="${escH(b.name)}"${b.name===cur?' selected':''}>${escH(b.name)}</option>`).join('');
+  }
 
-  // 3. Brand filter dropdown in filter bar
-  const brandSel = document.getElementById('prod-brand-filter');
-  if(brandSel){
-    const cur = brandSel.value;
+  // Filter bar — Brand dropdown (only brands that have products)
+  const brandFilter = document.getElementById('prod-brand-filter');
+  if(brandFilter){
+    const cur = brandFilter.value;
     const usedBrands = [...new Set(prods.map(p=>p.brand||'').filter(Boolean))].sort();
-    brandSel.innerHTML = '<option value="">All Brands</option>'+
+    brandFilter.innerHTML = '<option value="">All Brands</option>'+
       usedBrands.map(b=>`<option value="${escH(b)}"${b===cur?' selected':''}>${escH(b)}</option>`).join('');
   }
+}
+
+// ── MANAGE MODAL OPEN/CLOSE ──
+let _mgrTab = 'cat';
+function openManageMgr(){
+  _mgrTab = 'cat';
+  document.getElementById('mgr-modal').style.display='flex';
+  switchMgrTab('cat');
+}
+function closeMgr(){
+  document.getElementById('mgr-modal').style.display='none';
+  updateDataLists();
+  renderCatChips();
+  updateSubcatFilter();
+  renderProds();
+}
+function switchMgrTab(tab){
+  _mgrTab = tab;
+  document.getElementById('mgr-tab-cat').classList.toggle('active', tab==='cat');
+  document.getElementById('mgr-tab-brand').classList.toggle('active', tab==='brand');
+  document.getElementById('mgr-panel-cat').classList.toggle('active', tab==='cat');
+  document.getElementById('mgr-panel-brand').classList.toggle('active', tab==='brand');
+  if(tab==='cat') renderMgrCats(); else renderMgrBrands();
+}
+
+// ── RENDER LISTS IN MANAGER ──
+function renderMgrCats(){
+  const cats = getCatList();
+  const el = document.getElementById('mgr-cat-list');
+  if(!cats.length){ el.innerHTML='<div class="mgr-empty">No categories yet. Add one below.</div>'; return; }
+  el.innerHTML = cats.map(c=>`
+    <div class="mgr-item" id="mgr-cat-${c.id}">
+      <span class="mgr-item-name" id="mgr-cat-name-${c.id}">${escH(c.name)}</span>
+      <span class="mgr-item-meta">${(SBR.productDB||[]).filter(p=>p.cat===c.name).length} products</span>
+      <div class="mgr-item-actions">
+        <button class="btn btn-o btn-sm" onclick="editMgrCat(${c.id})">✏️</button>
+        <button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" onclick="deleteMgrCat(${c.id})">🗑</button>
+      </div>
+    </div>`).join('');
+}
+function renderMgrBrands(){
+  const brands = getBrandList();
+  const el = document.getElementById('mgr-brand-list');
+  if(!brands.length){ el.innerHTML='<div class="mgr-empty">No brands yet. Add one below.</div>'; return; }
+  el.innerHTML = brands.map(b=>`
+    <div class="mgr-item" id="mgr-brand-${b.id}">
+      <span class="mgr-item-name" id="mgr-brand-name-${b.id}">${escH(b.name)}</span>
+      <span class="mgr-item-meta">${(SBR.productDB||[]).filter(p=>p.brand===b.name).length} products</span>
+      <div class="mgr-item-actions">
+        <button class="btn btn-o btn-sm" onclick="editMgrBrand(${b.id})">✏️</button>
+        <button class="btn btn-sm" style="color:var(--red);border-color:var(--red)" onclick="deleteMgrBrand(${b.id})">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+// ── ADD ──
+function addMgrCat(){
+  const inp = document.getElementById('mgr-cat-input');
+  const name = (inp.value||'').trim();
+  if(!name){ inp.focus(); return; }
+  if(getCatList().find(c=>c.name.toLowerCase()===name.toLowerCase())){ showToast('Category already exists','error'); return; }
+  const newId = (Math.max(0,...(SBR.categories||[]).map(c=>c.id)))+1;
+  (SBR.categories = SBR.categories||[]).push({id:newId,name});
+  saveAllData();
+  inp.value='';
+  renderMgrCats();
+  showToast('Category added');
+}
+function addMgrBrand(){
+  const inp = document.getElementById('mgr-brand-input');
+  const name = (inp.value||'').trim();
+  if(!name){ inp.focus(); return; }
+  if(getBrandList().find(b=>b.name.toLowerCase()===name.toLowerCase())){ showToast('Brand already exists','error'); return; }
+  const newId = (Math.max(0,...(SBR.brands||[]).map(b=>b.id)))+1;
+  (SBR.brands = SBR.brands||[]).push({id:newId,name});
+  saveAllData();
+  inp.value='';
+  renderMgrBrands();
+  showToast('Brand added');
+}
+
+// ── EDIT (inline rename) ──
+function editMgrCat(id){
+  const cat = (SBR.categories||[]).find(c=>c.id===id);
+  if(!cat) return;
+  const nameEl = document.getElementById(`mgr-cat-name-${id}`);
+  const row    = document.getElementById(`mgr-cat-${id}`);
+  nameEl.innerHTML = `<input class="fi" style="padding:4px 8px;font-size:12px;flex:1" value="${escH(cat.name)}" id="mgr-cat-edit-${id}" onkeydown="if(event.key==='Enter')saveMgrCat(${id})">`;
+  row.querySelector('.mgr-item-actions').innerHTML =
+    `<button class="btn btn-p btn-sm" onclick="saveMgrCat(${id})">✓</button>`+
+    `<button class="btn btn-o btn-sm" onclick="renderMgrCats()">✕</button>`;
+  document.getElementById(`mgr-cat-edit-${id}`).focus();
+}
+function saveMgrCat(id){
+  const inp = document.getElementById(`mgr-cat-edit-${id}`);
+  const newName = (inp?inp.value:'').trim();
+  if(!newName) return;
+  const cat = (SBR.categories||[]).find(c=>c.id===id);
+  if(!cat) return;
+  const oldName = cat.name;
+  cat.name = newName;
+  // rename in all products
+  (SBR.productDB||[]).forEach(p=>{ if(p.cat===oldName) p.cat=newName; });
+  saveAllData();
+  renderMgrCats();
+  showToast('Category renamed');
+}
+function editMgrBrand(id){
+  const brand = (SBR.brands||[]).find(b=>b.id===id);
+  if(!brand) return;
+  const nameEl = document.getElementById(`mgr-brand-name-${id}`);
+  const row    = document.getElementById(`mgr-brand-${id}`);
+  nameEl.innerHTML = `<input class="fi" style="padding:4px 8px;font-size:12px;flex:1" value="${escH(brand.name)}" id="mgr-brand-edit-${id}" onkeydown="if(event.key==='Enter')saveMgrBrand(${id})">`;
+  row.querySelector('.mgr-item-actions').innerHTML =
+    `<button class="btn btn-p btn-sm" onclick="saveMgrBrand(${id})">✓</button>`+
+    `<button class="btn btn-o btn-sm" onclick="renderMgrBrands()">✕</button>`;
+  document.getElementById(`mgr-brand-edit-${id}`).focus();
+}
+function saveMgrBrand(id){
+  const inp = document.getElementById(`mgr-brand-edit-${id}`);
+  const newName = (inp?inp.value:'').trim();
+  if(!newName) return;
+  const brand = (SBR.brands||[]).find(b=>b.id===id);
+  if(!brand) return;
+  const oldName = brand.name;
+  brand.name = newName;
+  // rename in all products
+  (SBR.productDB||[]).forEach(p=>{ if(p.brand===oldName) p.brand=newName; });
+  saveAllData();
+  renderMgrBrands();
+  showToast('Brand renamed');
+}
+
+// ── DELETE ──
+function deleteMgrCat(id){
+  const cat = (SBR.categories||[]).find(c=>c.id===id);
+  if(!cat) return;
+  const count = (SBR.productDB||[]).filter(p=>p.cat===cat.name).length;
+  const msg = count>0
+    ? `Delete category "${cat.name}"? It is used by ${count} product(s) — their category will be cleared.`
+    : `Delete category "${cat.name}"?`;
+  if(!confirm(msg)) return;
+  if(count>0)(SBR.productDB||[]).forEach(p=>{ if(p.cat===cat.name) p.cat=''; });
+  SBR.categories = (SBR.categories||[]).filter(c=>c.id!==id);
+  saveAllData();
+  renderMgrCats();
+  showToast('Category deleted');
+}
+function deleteMgrBrand(id){
+  const brand = (SBR.brands||[]).find(b=>b.id===id);
+  if(!brand) return;
+  const count = (SBR.productDB||[]).filter(p=>p.brand===brand.name).length;
+  const msg = count>0
+    ? `Delete brand "${brand.name}"? It is used by ${count} product(s) — their brand will be cleared.`
+    : `Delete brand "${brand.name}"?`;
+  if(!confirm(msg)) return;
+  if(count>0)(SBR.productDB||[]).forEach(p=>{ if(p.brand===brand.name) p.brand=''; });
+  SBR.brands = (SBR.brands||[]).filter(b=>b.id!==id);
+  saveAllData();
+  renderMgrBrands();
+  showToast('Brand deleted');
 }
 
 // ── KPIs ──
@@ -663,9 +849,11 @@ function setView(v){
 function getFilteredProds(){
   const q = (document.getElementById('prod-search').value||'').toLowerCase();
   const sc = document.getElementById('prod-subcat').value;
+  const br = (document.getElementById('prod-brand-filter')||{}).value||'';
   return (SBR.productDB||[]).filter(p=>{
     if(activeCat && p.cat !== activeCat) return false;
     if(sc && p.subcat !== sc) return false;
+    if(br && (p.brand||'') !== br) return false;
     if(q){
       const hay = [p.name,p.model,p.brand,p.cat,p.subcat,p.desc,p.supplier].join(' ').toLowerCase();
       if(!hay.includes(q)) return false;
@@ -773,6 +961,7 @@ function openAddModal(){
   document.getElementById('edit-prod-id').value = '';
   document.getElementById('modal-title').textContent = 'Add Product';
   clearModalFields();
+  updateDataLists();
   showTab('basic');
   document.getElementById('prod-modal').style.display='flex';
   setTimeout(()=>document.getElementById('p-name').focus(),50);
@@ -784,6 +973,8 @@ function editProd(id){
 
   document.getElementById('edit-prod-id').value = id;
   document.getElementById('modal-title').textContent = 'Edit Product';
+
+  updateDataLists(); // populate selects before setting values
 
   // Basic
   document.getElementById('p-name').value = p.name||'';
@@ -1142,6 +1333,7 @@ function saveProd(){
 
   saveAllData();
   closeModal();
+  updateDataLists();
   renderCatChips();
   updateSubcatFilter();
   renderProds();

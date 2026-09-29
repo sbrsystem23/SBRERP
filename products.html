@@ -175,6 +175,9 @@
     <div class="search-wrap flex-1">
       <input class="fi" type="text" id="prod-search" placeholder="Search by name, model, brand…" oninput="renderProds()">
     </div>
+    <select class="fi" id="prod-brand-filter" onchange="renderProds()" style="min-width:130px">
+      <option value="">All Brands</option>
+    </select>
     <select class="fi" id="prod-subcat" onchange="renderProds()" style="min-width:130px">
       <option value="">All Sub-cats</option>
     </select>
@@ -263,17 +266,55 @@
           <input class="fi" id="p-model" type="text" placeholder="e.g. SBR-0003-8A">
         </div>
         <div class="field">
-          <label class="flbl">Brand</label>
-          <input class="fi" id="p-brand" type="text" placeholder="e.g. SATION, Siemens…">
+          <label class="flbl">Brand <span style="font-weight:400;color:var(--text3)">(pick or type new)</span></label>
+          <input class="fi" id="p-brand" type="text" list="p-brand-list" placeholder="e.g. Ubiquiti, Hikvision, Lutron…" autocomplete="off">
+          <datalist id="p-brand-list">
+            <option>Ubiquiti</option>
+            <option>Hikvision</option>
+            <option>Lutron</option>
+            <option>Control4</option>
+            <option>Crestron</option>
+            <option>Siemens</option>
+            <option>ABB</option>
+            <option>Schneider Electric</option>
+            <option>Hager</option>
+            <option>Gira</option>
+            <option>MDT</option>
+            <option>Jung</option>
+            <option>Busch-Jaeger</option>
+            <option>Legrand</option>
+            <option>QSC</option>
+            <option>Sony</option>
+            <option>Samsung</option>
+            <option>LG</option>
+            <option>Axis</option>
+            <option>Dahua</option>
+            <option>Bosch</option>
+            <option>Cisco</option>
+            <option>TP-Link</option>
+            <option>Mikrotik</option>
+            <option>Bose</option>
+            <option>Denon</option>
+            <option>Extron</option>
+            <option>Kramer</option>
+            <option>AMX</option>
+            <option>Savant</option>
+            <option>Rako</option>
+            <option>Helvar</option>
+            <option>Zennio</option>
+            <option>Theben</option>
+            <option>Weinzierl</option>
+            <option>SATION</option>
+          </datalist>
         </div>
         <div class="field">
-          <label class="flbl">Category *</label>
-          <select class="fi" id="p-cat" onchange="updateSubcats()">
-            <option value="">— Select —</option>
+          <label class="flbl">Category <span style="font-weight:400;color:var(--text3)">(pick or type new)</span></label>
+          <input class="fi" id="p-cat" list="p-cat-list" placeholder="e.g. KNX Automation, CCTV, Networking…" oninput="updateSubcats()" autocomplete="off">
+          <datalist id="p-cat-list">
             <option>KNX Automation</option>
             <option>CCTV</option>
             <option>Networking</option>
-            <option>Audio</option>
+            <option>Audio / Visual</option>
             <option>AV</option>
             <option>Intercom</option>
             <option>Access Control</option>
@@ -281,9 +322,12 @@
             <option>Dali Driver</option>
             <option>Cables</option>
             <option>Wireless Thermostat</option>
+            <option>Lighting Control</option>
+            <option>Sensors</option>
+            <option>Displays</option>
             <option>Ring</option>
             <option>General</option>
-          </select>
+          </datalist>
         </div>
         <div class="field">
           <label class="flbl">Sub-category</label>
@@ -521,8 +565,40 @@ window.addEventListener('DOMContentLoaded', ()=>{
 function onDataReady(){
   renderCatChips();
   updateSubcatFilter();
+  updateDataLists();
   renderProds();
   updateKPIs();
+}
+
+// ── UPDATE DATALISTS & BRAND FILTER from existing products ──
+function updateDataLists(){
+  const prods = SBR.productDB||[];
+
+  // 1. Category datalist — merge defaults + user categories from saved products
+  const defaultCats = ['KNX Automation','CCTV','Networking','Audio / Visual','AV','Intercom',
+    'Access Control','Automation','Dali Driver','Cables','Wireless Thermostat',
+    'Lighting Control','Sensors','Displays','Ring','General'];
+  const allCats = [...new Set([...defaultCats, ...prods.map(p=>p.cat||'').filter(Boolean)])].sort();
+  const catDl = document.getElementById('p-cat-list');
+  if(catDl) catDl.innerHTML = allCats.map(c=>`<option value="${escH(c)}">`).join('');
+
+  // 2. Brand datalist — merge defaults + user brands from saved products
+  const defaultBrands = ['Ubiquiti','Hikvision','Lutron','Control4','Crestron','Siemens','ABB',
+    'Schneider Electric','Hager','Gira','MDT','Jung','Busch-Jaeger','Legrand','QSC','Sony',
+    'Samsung','LG','Axis','Dahua','Bosch','Cisco','TP-Link','Mikrotik','Bose','Denon',
+    'Extron','Kramer','AMX','Savant','Rako','Helvar','Zennio','Theben','Weinzierl','SATION'];
+  const allBrands = [...new Set([...defaultBrands, ...prods.map(p=>p.brand||'').filter(Boolean)])].sort();
+  const brandDl = document.getElementById('p-brand-list');
+  if(brandDl) brandDl.innerHTML = allBrands.map(b=>`<option value="${escH(b)}">`).join('');
+
+  // 3. Brand filter dropdown in filter bar
+  const brandSel = document.getElementById('prod-brand-filter');
+  if(brandSel){
+    const cur = brandSel.value;
+    const usedBrands = [...new Set(prods.map(p=>p.brand||'').filter(Boolean))].sort();
+    brandSel.innerHTML = '<option value="">All Brands</option>'+
+      usedBrands.map(b=>`<option value="${escH(b)}"${b===cur?' selected':''}>${escH(b)}</option>`).join('');
+  }
 }
 
 // ── KPIs ──

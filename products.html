@@ -2106,7 +2106,7 @@ function addLookupToDB(idx){
   if(imgUrl && imgUrl.startsWith('http')){
     fetch(imgUrl)
       .then(r=>r.blob())
-      .then(blob=>{ const reader=new FileReader(); reader.onload=e=>compressImage(e.target.result,600,600,0.7,doSave); reader.readAsDataURL(blob); })
+      .then(blob=>{ const reader=new FileReader(); reader.onload=e=>compressImage(e.target.result,240,240,0.5,doSave); reader.readAsDataURL(blob); })
       .catch(()=>doSave(imgUrl));
   } else {
     doSave(imgUrl);

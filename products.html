@@ -870,14 +870,17 @@ function renderProds(){
   else renderListView(prods);
 }
 
-// Resolve image: real base64 comes from Sheets; __IMG__ = old placeholder, load from localStorage cache
+// Check if a string is a valid image source (base64 or URL)
+function isImg(s){ return !!(s && (s.startsWith('data:') || s.startsWith('http'))); }
+
+// Resolve image: accepts base64 or Drive URL; falls back to localStorage cache
 function resolveImg(p){
   const raw = p.sbrImg || p.supImg || '';
-  if(raw && raw !== '__IMG__' && raw.startsWith('data:')) return raw;
+  if(raw && raw !== '__IMG__' && isImg(raw)) return raw;
   // Old placeholder or missing — try localStorage cache
   try {
     const store = JSON.parse(localStorage.getItem('sbr_prod2_imgs')||'{}');
-    if(store[p.id]) return store[p.id];
+    if(store[p.id] && isImg(store[p.id])) return store[p.id];
   } catch(e){}
   // Still nothing — return whatever was there (a URL perhaps)
   return (raw && raw !== '__IMG__') ? raw : '';
@@ -1014,8 +1017,8 @@ function editProd(id){
   _supRows = JSON.parse(JSON.stringify(p.supplierRows||[{name:p.supplier||'',cost:p.cost||0,currency:p.currency||'AED',notes:''}]));
   _ecRows  = JSON.parse(JSON.stringify(p.extraCharges||[{label:'Shipping',amount:0},{label:'Admin Charges',amount:0}]));
 
-  // Image — load from product (stored in Sheets), fallback to localStorage cache
-  _editImgData = (p.sbrImg && p.sbrImg !== '__IMG__') ? p.sbrImg : '';
+  // Image — load from product (stored in Sheets as Drive URL or base64), fallback to localStorage cache
+  _editImgData = (p.sbrImg && p.sbrImg !== '__IMG__' && p.sbrImg !== '[img]') ? p.sbrImg : '';
   if(!_editImgData){
     try {
       const store = JSON.parse(localStorage.getItem('sbr_prod2_imgs')||'{}');
@@ -1226,10 +1229,22 @@ function handleImgUpload(input){
   if(file.size > 10*1024*1024){ showToast('Image too large (max 10MB)','error'); return; }
   const reader = new FileReader();
   reader.onload = e => {
-    // 240×240 @ 50% quality ≈ 10–15 KB base64 — fits in Google Sheets cell
-    compressImage(e.target.result, 240, 240, 0.5, data => {
-      _editImgData = data;
+    // 240×240 @ 50% quality ≈ 10–15 KB base64
+    compressImage(e.target.result, 240, 240, 0.5, async compressed => {
+      // Show preview immediately with base64
+      _editImgData = compressed;
       refreshImgPreview();
+      // Try uploading to Google Drive for permanent cloud storage
+      const prodName = document.getElementById('p-name') ? document.getElementById('p-name').value : 'product';
+      showToast('☁️ Uploading image to cloud...');
+      const url = await uploadImageToGoogleDrive(compressed, prodName);
+      if(url){
+        _editImgData = url;
+        refreshImgPreview();
+        showToast('✅ Image saved to cloud!');
+      } else {
+        showToast('📱 Image saved locally (cloud upload failed)', 'error');
+      }
     });
   };
   reader.readAsDataURL(file);
@@ -1356,7 +1371,7 @@ function saveProd(){
   const savedId = editId ? parseInt(editId) : obj.id;
   try {
     const imgStore = JSON.parse(localStorage.getItem('sbr_prod2_imgs')||'{}');
-    if(imgData && imgData.startsWith('data:')){ imgStore[savedId] = imgData; }
+    if(imgData && isImg(imgData)){ imgStore[savedId] = imgData; } // store both Drive URLs and base64
     else { delete imgStore[savedId]; }
     localStorage.setItem('sbr_prod2_imgs', JSON.stringify(imgStore));
   } catch(e){}
